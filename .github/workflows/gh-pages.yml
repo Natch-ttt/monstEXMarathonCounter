@@ -2,21 +2,22 @@ name: Deploy to GitHub Pages
 
 # GitHub Token にページ公開の書き込み権限を付与
 permissions:
-  contents: read      # ソースのチェックアウトは読み取り
-  pages: write        # GH Pages ブランチへの書き込み
-  id-token: write     # pages action が必要に応じてトークンを取得
+  pages: write
+  contents: read
 
 on:
   push:
-    branches:
-      - main
+    branches: [ main ]
 
 jobs:
-  build_and_deploy:
+  deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v3
+        with:
+          # デフォルトの GITHUB_TOKEN ではなく PAT を使って checkout
+          token: ${{ secrets.GH_PAGES_TOKEN }}
+          fetch-depth: 0
 
       - name: Setup Node.js
         uses: actions/setup-node@v3
@@ -32,7 +33,10 @@ jobs:
       - name: Deploy to gh-pages
         uses: peaceiris/actions-gh-pages@v3
         with:
-          # GITHUB_TOKEN に pages: write があることが必須
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+          # ここも PAT
+          github_token: ${{ secrets.GH_PAGES_TOKEN }}
           publish_branch: gh-pages
           publish_dir: ./dist
+          # optional: コミット作者情報
+          commit_user_name: "github-actions[bot]"
+          commit_user_email: "41898282+github-actions[bot]@users.noreply.github.com"
