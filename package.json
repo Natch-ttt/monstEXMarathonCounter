@@ -2,6 +2,7 @@
   "name": "monstEXMarathonCounter",
   "private": true,
   "version": "0.0.1",
+  "homepage": "https://Natch-ttt.github.io/monstEXMarathonCounter/",
   "type": "module",
   "scripts": {
     "dev": "vite",
