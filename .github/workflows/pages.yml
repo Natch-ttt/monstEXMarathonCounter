@@ -1,37 +1,44 @@
-name: Deploy to GitHub Pages
+name: Deploy to GitHub Pages via gh-pages
 
 on:
   push:
     branches: [ main ]
 
 permissions:
-  contents: read
-  pages: write
+  contents: read   # ソースのチェックアウト用
+  pages: write     # GitHub Pages 更新用
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+
     steps:
+      # 1) コードをチェックアウト
       - name: Checkout code
         uses: actions/checkout@v3
 
+      # 2) Node.js のセットアップ
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
           node-version: '16'
 
+      # 3) 依存インストール & ビルド
       - name: Install & Build
         run: |
           npm ci
           npm run build
 
-      - name: Deploy to GitHub Pages
-        uses: JamesIves/github-pages-deploy-action@v4
-        with:
-          branch: gh-pages
-          folder: dist
-          # ← use the correct input key here:
-          github_token: ${{ secrets.GH_PAGES_TOKEN }}
-          # or, if that still errors, try:
-          # repo_token: ${{ secrets.GH_PAGES_TOKEN }}
-          clean: true
+      # 4) ビルド成果物を確認（デバッグ用。不要なら消してOK）
+      - name: List dist folder
+        run: ls -R dist
+
+      # 5) gh-pages パッケージ経由でデプロイ
+      - name: Deploy to gh-pages
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAGES_TOKEN }}
+        run: |
+          npx gh-pages \
+            --dist dist \
+            --branch gh-pages \
+            --dotfiles
