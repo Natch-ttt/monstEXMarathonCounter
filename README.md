@@ -10,13 +10,13 @@ monstEXMarathonCounter は、モンストの EX ステージ遭遇までの周�
 
 ## 🚀 Live Demo
 
-https://Natch-ttt.github.io/monstEXMarathonCounter/
+https://natch789.github.io/monstEXMarathonCounter/
 
 ## 💻 Installation
 
 ```bash
 # リポジトリをクローン
-git clone https://github.com/Natch-ttt/monstEXMarathonCounter.git
+git clone https://github.com/natch789/monstEXMarathonCounter.git
 cd monstEXMarathonCounter
 
 # 依存パッケージをインストール
