@@ -1,0 +1,51 @@
+name: Deploy to GitHub Pages via SSH
+
+on:
+  push:
+    branches: [ main ]
+
+permissions:
+  contents: read
+  pages:   write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      # 1) コードをチェックアウト
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      # 2) SSH Agent を立ち上げ、秘密鍵を追加
+      - name: Setup SSH for deploy
+        uses: webfactory/ssh-agent@v0.8.1
+        with:
+          ssh-private-key: ${{ secrets.SSH_DEPLOY_KEY }}
+
+      # 3) Node.js セットアップ & ビルド
+      - uses: actions/setup-node@v3
+        with:
+          node-version: '16'
+      - run: |
+          npm ci
+          npm run build
+
+      # 4) Git ユーザー情報を設定
+      - run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      # 5) リモート URL を SSH に切り替え
+      - run: |
+          git remote set-url origin git@github.com:${{ github.repository }}.git
+
+      # 6) orphan ブランチにビルド成果物をコミット＆強制プッシュ
+      - run: |
+          git fetch origin gh-pages || true
+          git checkout --orphan gh-pages
+          git rm -rf .
+          cp -R dist/* .
+          git add -A
+          git commit -m "ci: deploy via SSH (${GITHUB_SHA::7})"
+          git push origin gh-pages --force
