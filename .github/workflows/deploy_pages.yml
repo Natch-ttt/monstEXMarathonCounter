@@ -1,0 +1,48 @@
+name: Build & Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [ main ]
+
+permissions:
+  contents: read   # コードチェックアウト用
+  pages:   write   # Pages 更新用
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      # 1) ソース取得
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      # 2) Node.js セットアップ＆ビルド
+      - uses: actions/setup-node@v3
+        with:
+          node-version: '16'
+      - run: |
+          npm ci
+          npm run build
+
+      # 3) Git の作業名義＆認証を設定
+      - name: Configure Git & Auth
+        env:
+          GH_PAGES_TOKEN: ${{ secrets.GH_PAGES_TOKEN }}
+        run: |
+          # commit author を Bot に
+          git config --global user.name  "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          # リモート URL をトークン付きに
+          git remote set-url origin https://x-access-token:${GH_PAGES_TOKEN}@github.com/${{ github.repository }}.git
+
+      # 4) gh-pages ブランチを orphan で作成し、dist を push
+      - name: Push to gh-pages
+        run: |
+          git fetch origin gh-pages || true
+          git checkout --orphan gh-pages
+          git rm -rf .
+          cp -r dist/* .
+          git add -A
+          git commit -m "ci: Deploy to gh-pages (${GITHUB_SHA::7})"
+          git push origin gh-pages --force
