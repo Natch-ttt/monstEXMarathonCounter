@@ -6,8 +6,10 @@ import path from 'path'
 import { defineConfig } from 'vite'
 
 // https://vitejs.dev/config/
-export default defineConfig({
-  base: '/monstEXMarathonCounter/',
+export default defineConfig(({ command }) => ({
+  base: command === 'serve'
+    ? '/'                               // ローカル起動時はルート
+    : '/monstEXMarathonCounter/',       // GitHub Pages 用サブパス
   plugins: [
     vue(),
     legacy()
@@ -21,4 +23,4 @@ export default defineConfig({
     globals: true,
     environment: 'jsdom'
   }
-})
+}))
