@@ -19,7 +19,7 @@ jobs:
 
       # 2) SSH Agent を立ち上げ、秘密鍵を追加
       - name: Setup SSH for deploy
-        uses: webfactory/ssh-agent@v0.8.1
+        uses: webfactory/ssh-agent@v0.9.1
         with:
           ssh-private-key: ${{ secrets.SSH_DEPLOY_KEY }}
 
