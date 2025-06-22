@@ -1,3 +1,4 @@
+# .github/workflows/pages.yml
 name: Deploy to GitHub Pages via gh-pages
 
 on:
@@ -5,35 +6,34 @@ on:
     branches: [ main ]
 
 permissions:
-  contents: read   # ソースのチェックアウト用
-  pages: write     # GitHub Pages 更新用
+  contents: read
+  pages: write
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
     steps:
-      # 1) コードをチェックアウト
-      - name: Checkout code
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v3
 
-      # 2) Node.js のセットアップ
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
           node-version: '16'
 
-      # 3) 依存インストール & ビルド
       - name: Install & Build
         run: |
           npm ci
           npm run build
 
-      # 4) ビルド成果物を確認（デバッグ用。不要なら消してOK）
       - name: List dist folder
         run: ls -R dist
 
-      # 5) gh-pages パッケージ経由でデプロイ
+      - name: Configure Git user for gh-pages
+        run: |
+          git config --global user.name  "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
       - name: Deploy to gh-pages
         env:
           GH_TOKEN: ${{ secrets.GH_PAGES_TOKEN }}
