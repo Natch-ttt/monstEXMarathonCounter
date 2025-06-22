@@ -1,0 +1,64 @@
+name: Deploy to GitHub Pages (Manual)
+
+on:
+  push:
+    branches: [ main ]
+
+permissions:
+  contents: read     # コード取得用
+  pages: write       # GitHub Pages 更新用
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1) コードチェックアウト
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          persist-credentials: false  # デフォルトの GITHUB_TOKEN 認証をOFF
+          fetch-depth: 0
+
+      # 2) Node.js をセットアップ
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '16'
+
+      # 3) 依存インストール＆ビルド
+      - name: Install & Build
+        run: |
+          npm ci
+          npm run build
+
+      # 4) gh-pages ブランチを orphan で用意し、dist を上書き
+      - name: Deploy to gh-pages branch
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          AUTHOR_NAME: github-actions[bot]
+          AUTHOR_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
+        run: |
+          # Git ユーザー情報
+          git config --global user.name "$AUTHOR_NAME"
+          git config --global user.email "$AUTHOR_EMAIL"
+
+          # origin をトークン認証に切替
+          git remote set-url origin https://${GH_TOKEN}@github.com/${{ github.repository }}.git
+
+          # gh-pages が存在すれば取得
+          git fetch origin gh-pages || true
+
+          # orphan ブランチ作成（履歴を切り離す）
+          git checkout --orphan gh-pages
+
+          # ワークツリー内をクリーン
+          git rm -rf .
+
+          # ビルド成果物をコピー
+          cp -r dist/* .
+
+          # コミット＆強制プッシュ
+          git add -A
+          git commit -m "Deploy to GitHub Pages: ${GITHUB_SHA}"
+          git push origin gh-pages --force
