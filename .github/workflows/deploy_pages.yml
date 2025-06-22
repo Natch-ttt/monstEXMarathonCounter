@@ -5,19 +5,20 @@ on:
     branches: [ main ]
 
 permissions:
-  contents: read
-  pages:   write
+  contents: read   # ソースチェックアウト用
+  pages:   write   # Pages 更新用
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+
     steps:
-      # 1) Checkout でデフォルト cred をオフ
+      # 1) ソースを取得（デフォルト cred をオフ）
       - name: Checkout code
         uses: actions/checkout@v3
         with:
           fetch-depth: 0
-          persist-credentials: false  # ← ここが肝
+          persist-credentials: false
 
       # 2) Node.js セットアップ＆ビルド
       - uses: actions/setup-node@v3
@@ -27,28 +28,26 @@ jobs:
           npm ci
           npm run build
 
-      # 3) Git のユーザー情報とリモート URL を PAT 埋め込みに
-      - name: Configure Git and Auth
-        env:
-          GH_PAGES_TOKEN: ${{ secrets.GH_PAGES_TOKEN }}
+      # 3) git ユーザー情報をセット
+      - name: Configure Git user
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-          # デフォルトの extraheader をクリア（安全策）
-          git config --unset-all http.extraheader || true
-
-          # origin を PAT 付き URL に上書き
-          git remote set-url origin \
-            https://x-access-token:${GH_PAGES_TOKEN}@github.com/${{ github.repository }}.git
-
-      # 4) orphan ブランチに dist をコミット＆強制プッシュ
-      - name: Deploy to gh-pages
+      # 4) gh-pages ブランチを orphan で作って dist をコミット
+      - name: Prepare gh-pages branch
         run: |
           git fetch origin gh-pages || true
           git checkout --orphan gh-pages
           git rm -rf .
           cp -R dist/* .
           git add -A
-          git commit -m "ci: Deploy dist to gh-pages (${GITHUB_SHA::7})"
-          git push origin gh-pages --force
+          git commit -m "ci: Deploy ${GITHUB_SHA::7}"
+
+      # 5) HTTP ヘッダー経由で PAT を渡し、強制プッシュ
+      - name: Push to gh-pages with Bearer auth
+        env:
+          GH_PAGES_TOKEN: ${{ secrets.GH_PAGES_TOKEN }}
+        run: |
+          git -c http.extraheader="Authorization: Bearer $GH_PAGES_TOKEN" \
+              push origin HEAD:gh-pages --force
