@@ -30,5 +30,8 @@ jobs:
         with:
           branch: gh-pages
           folder: dist
-          token: ${{ secrets.GH_PAGES_TOKEN }}
+          # ← use the correct input key here:
+          github_token: ${{ secrets.GH_PAGES_TOKEN }}
+          # or, if that still errors, try:
+          # repo_token: ${{ secrets.GH_PAGES_TOKEN }}
           clean: true
