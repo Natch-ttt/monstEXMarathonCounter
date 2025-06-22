@@ -8,8 +8,8 @@ import { defineConfig } from 'vite'
 // https://vitejs.dev/config/
 export default defineConfig(({ command }) => ({
   base: command === 'serve'
-    ? '/'                               // ローカル起動時はルート
-    : '/monstEXMarathonCounter/',       // GitHub Pages 用サブパス
+    ? '/'   // ローカル起動時はルート
+    : './', // GitHub Pages 用サブパス
   plugins: [
     vue(),
     legacy()
