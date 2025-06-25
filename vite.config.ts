@@ -9,7 +9,7 @@ import { defineConfig } from 'vite'
 export default defineConfig(({ command }) => ({
   base: command === 'serve'
     ? '/'   // ローカル起動時はルート
-    : './', // GitHub Pages 用サブパス
+    : '/monstEXMarathonCounter/', // GitHub Pages 用サブパス
   plugins: [
     vue(),
     legacy()
