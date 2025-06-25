@@ -15,6 +15,11 @@
       <ion-header collapse="condense">
         <ion-toolbar>
           <ion-title size="large">【モンスト】周回カウンター</ion-title>
+          <ion-buttons slot="end">
+            <ion-button @click="onAdd">
+              <ion-icon slot="icon-only" :icon="addOutline" />
+            </ion-button>
+          </ion-buttons>
         </ion-toolbar>
       </ion-header>
 
