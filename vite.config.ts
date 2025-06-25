@@ -17,15 +17,14 @@ export default defineConfig(({ command }) => ({
     viteStaticCopy({
       targets: [
         {
-          // Ionic の dist/ionic 内のエントリーファイルを assets のルートにコピー
+          // ion-*.entry.js を全部拾って assets/ にコピー。フォルダ構造はそのまま flatten されています
           src: path.resolve(__dirname, 'node_modules/@ionic/core/dist/ionic/*.entry.js'),
-          dest: 'assets',
-          flatten: true
+          dest: 'assets'
         },
         {
+          // 同じく sc.entry.js も
           src: path.resolve(__dirname, 'node_modules/@ionic/core/dist/ionic/*.sc.entry.js'),
-          dest: 'assets',
-          flatten: true
+          dest: 'assets'
         }
       ]
     })
