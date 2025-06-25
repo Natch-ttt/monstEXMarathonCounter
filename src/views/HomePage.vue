@@ -13,7 +13,14 @@
     </ion-header>
 
     <!-- コンテンツ -->
-    <ion-content class="ion-padding">
+    <ion-content :fullscreen="true" class="ion-padding">
+      <!-- 折り畳み用ヘッダー（スクロールで大きなタイトル出したいなら） -->
+      <ion-header collapse="condense">
+        <ion-toolbar>
+          <ion-title size="large">【モンスト】周回カウンター</ion-title>
+        </ion-toolbar>
+      </ion-header>
+
       <ion-list v-if="store.counters.length">
         <template v-for="item in store.counters" :key="item.id">
           <!-- ネイティブならスワイプ削除 -->
@@ -84,7 +91,7 @@ const router = useRouter()
 const store = useCounterStore()
 
 // ネイティブかハイブリッドか判定
-const isNative = true
+const isNative = isPlatform('capacitor') || isPlatform('cordova')
 
 function goCounter(id: string) {
   router.push({ name: 'Counter', params: { id } })
