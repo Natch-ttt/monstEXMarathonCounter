@@ -19,21 +19,9 @@
     <meta name="apple-mobile-web-app-title" content="Ionic App" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black" />
 
-    <!-- 1) Ionic コンポーネント本体 -->
-    <script type="module"
-      src="https://cdn.jsdelivr.net/npm/@ionic/core@6.4.8/dist/ionic/ionic.esm.js">
-    </script>
-    <script nomodule
-      src="https://cdn.jsdelivr.net/npm/@ionic/core@6.4.8/dist/ionic/ionic.js">
-    </script>
-    <!-- 2) Ionic CSS Bundle -->
-    <link
-      rel="stylesheet"
-      href="https://cdn.jsdelivr.net/npm/@ionic/core@6.4.8/css/ionic.bundle.css"
-    />
-    <!-- 3) ビルド後 CSS/JS はここで読み込まれる -->
-    <link rel="stylesheet" href="%BASE_URL%assets/index.css" />
-    <script type="module" src="%BASE_URL%assets/index.js"></script>
+    <script type="module" src="<%= ionicEsm %>"></script>
+    <script nomodule src="<%= ionicNomodule %>"></script>
+    <link rel="stylesheet" href="<%= ionicCss %>" />
   </head>
 
   <body>

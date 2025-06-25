@@ -11,8 +11,12 @@ const routes: Array<RouteRecordRaw> = [
 
 export const router = createRouter({
   // history: createWebHistory(import.meta.env.BASE_URL),
-  history: createWebHashHistory(), // ← Hash モードに
-  routes: routes
+  history: createWebHashHistory(),   // ← Hash モードに
+  routes: [
+    { path: '/', redirect: '/home' },
+    { path: '/home', name: 'Home', component: HomePage },
+    { path: '/counter/:id', name: 'Counter', component: CounterPage, props: true },
+  ]
 })
 
 export default router
