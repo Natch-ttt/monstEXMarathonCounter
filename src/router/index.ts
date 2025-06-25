@@ -11,8 +11,8 @@ const routes: Array<RouteRecordRaw> = [
 
 export const router = createRouter({
   // history: createWebHistory(import.meta.env.BASE_URL),
-  history: createWebHashHistory(),   // ← Hash モードに
-  routes
+  history: createWebHashHistory(import.meta.env.BASE_URL),
+  routes: routes
 })
 
 export default router
