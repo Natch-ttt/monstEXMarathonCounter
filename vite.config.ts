@@ -4,7 +4,6 @@ import legacy from '@vitejs/plugin-legacy'
 import vue from '@vitejs/plugin-vue'
 import path from 'path'
 import { defineConfig } from 'vite'
-import { viteStaticCopy }     from 'vite-plugin-static-copy'
 
 // https://vitejs.dev/config/
 export default defineConfig(({ command }) => ({
@@ -13,16 +12,7 @@ export default defineConfig(({ command }) => ({
     : '/monstEXMarathonCounter/', // GitHub Pages 用サブパス
   plugins: [
     vue(),
-    legacy(),
-    viteStaticCopy({
-      targets: [
-        {
-          // ion-*.entry.js を全部拾って assets/ にコピー。フォルダ構造はそのまま flatten されています
-          src: path.resolve(__dirname, 'node_modules/@ionic/core/dist/ionic/*.entry.js'),
-          dest: 'assets'
-        }
-      ]
-    })
+    legacy()
   ],
   resolve: {
     alias: {
