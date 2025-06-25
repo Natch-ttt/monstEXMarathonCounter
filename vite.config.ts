@@ -17,9 +17,15 @@ export default defineConfig(({ command }) => ({
     viteStaticCopy({
       targets: [
         {
-          // Ionic Loader の出力先をまるごと dist/assets にコピー
-          src: path.resolve(__dirname, 'node_modules/@ionic/core/dist/ionic'),
-          dest: 'assets'
+          // Ionic の dist/ionic 内のエントリーファイルを assets のルートにコピー
+          src: path.resolve(__dirname, 'node_modules/@ionic/core/dist/ionic/*.entry.js'),
+          dest: 'assets',
+          flatten: true
+        },
+        {
+          src: path.resolve(__dirname, 'node_modules/@ionic/core/dist/ionic/*.sc.entry.js'),
+          dest: 'assets',
+          flatten: true
         }
       ]
     })

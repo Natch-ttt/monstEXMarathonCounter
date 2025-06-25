@@ -50,7 +50,7 @@ const app = createApp(App)
   .use(router);
 
 defineCustomElements(window, {
-  resourcesUrl: import.meta.env.BASE_URL + 'assets/'
+  resourcesUrl: import.meta.env.BASE_URL + 'assets/ionic/'
 })
 
 router.isReady().then(() => {
