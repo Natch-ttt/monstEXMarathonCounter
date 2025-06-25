@@ -4,6 +4,9 @@ import router from './router';
 
 import { IonicVue } from '@ionic/vue';
 
+// これを追加
+import { defineCustomElements } from '@ionic/core/loader'
+
 /* Core CSS required for Ionic components to work properly */
 import '@ionic/vue/css/core.css';
 
@@ -45,6 +48,8 @@ const app = createApp(App)
   .use(IonicVue)
   .use(pinia)
   .use(router);
+
+defineCustomElements(window)
 
 router.isReady().then(() => {
   app.mount('#app');
