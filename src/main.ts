@@ -49,7 +49,9 @@ const app = createApp(App)
   .use(pinia)
   .use(router);
 
-defineCustomElements(window)
+defineCustomElements(window, {
+  resourcesUrl: import.meta.env.BASE_URL + 'assets/'
+})
 
 router.isReady().then(() => {
   app.mount('#app');
