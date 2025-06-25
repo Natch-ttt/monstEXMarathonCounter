@@ -20,11 +20,6 @@ export default defineConfig(({ command }) => ({
           // ion-*.entry.js を全部拾って assets/ にコピー。フォルダ構造はそのまま flatten されています
           src: path.resolve(__dirname, 'node_modules/@ionic/core/dist/ionic/*.entry.js'),
           dest: 'assets'
-        },
-        {
-          // 同じく sc.entry.js も
-          src: path.resolve(__dirname, 'node_modules/@ionic/core/dist/ionic/*.sc.entry.js'),
-          dest: 'assets'
         }
       ]
     })
