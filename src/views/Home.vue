@@ -79,6 +79,7 @@ import {
 import { addOutline, trashOutline, warningOutline } from 'ionicons/icons'
 import { useCounterStore } from '@/stores/counter'
 import { useRouter } from 'vue-router'
+import { blurActive } from '@/utils/focusUtils'
 import CounterItemLabel from '@/components/CounterItemLabel.vue'
 
 const router = useRouter()
@@ -101,6 +102,7 @@ function getDefaultName() {
 // 新規作成
 async function onAdd() {
   // alert インスタンスを外部参照できるように宣言
+  blurActive()
   let theAlert: HTMLIonAlertElement
   theAlert = await alertController.create({
     header: '新規カウンター作成',
@@ -110,7 +112,7 @@ async function onAdd() {
         type: 'text',
         // デフォルト値をセット
         value: getDefaultName(),
-        placeholder: '例）禁忌【深淵】_不可思議'
+        placeholder: '例）禁忌【深淵】_不可思議',
       }
     ],
     backdropDismiss: false,
@@ -135,6 +137,7 @@ async function onAdd() {
 
 // 項目削除
 async function confirmRemove(id: string, name: string) {
+  blurActive()
   const alert = await alertController.create({
     header: `「${name}」を削除`,  // ヘッダーにタイトルを埋め込む
     message: '本当に削除しますか？',
