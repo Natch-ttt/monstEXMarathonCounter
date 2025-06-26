@@ -73,6 +73,7 @@ import {
 import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useCounterStore } from '@/stores/counter'
+import { blurActive } from '@/utils/focusUtils'
 import {
   addOutline,
   removeOutline,
@@ -106,26 +107,31 @@ onMounted(() => {
 
 // 3) 操作メソッド
 function increment() {
+  blurActive()
   store.increment(id)
   showToast('+1')
 }
 
 function decrement() {
+  blurActive()
   store.decrement(id)
   showToast('-1')
 }
 
 function reset() {
+  blurActive()
   store.resetCount(id)
   showToast('リセットしました')
 }
 
 // 4) 名前編集
 function startEditing() {
+  blurActive()
   editedName.value = counter.value!.name
   editingName.value = true
 }
 function saveName() {
+  blurActive()
   const n = editedName.value.trim()
   if (n) {
     store.updateName(id, n)
@@ -135,6 +141,7 @@ function saveName() {
 
 // 5) 削除確認
 async function confirmRemove() {
+  blurActive()
   const alert = await alertController.create({
     header: `「${counter.value?.name}」を削除`,
     message: '本当に削除しますか？',
@@ -155,6 +162,7 @@ async function confirmRemove() {
 
 // 6) 操作通知トースト
 async function showToast(msg: string) {
+  blurActive()
   const toast = await toastController.create({
     message: msg,
     duration: 500,
