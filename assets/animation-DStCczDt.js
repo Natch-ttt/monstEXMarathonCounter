@@ -1,4 +1,4 @@
-import{r as P}from"./index-cs9-Ldcn.js";/*!
+import{r as P}from"./index-Bkmw9vp6.js";/*!
  * (C) Ionic http://ionicframework.com - MIT License
  */const Sn=typeof window<"u"?window:void 0;/*!
  * (C) Ionic http://ionicframework.com - MIT License
