@@ -1,11 +1,11 @@
 import type { RouteRecordRaw } from 'vue-router'
 import { createRouter, createWebHashHistory } from '@ionic/vue-router'
 import Home from '@/views/Home.vue'
-import About from '@/views/About.vue'
+import Counter from '@/views/Counter.vue'
 
 const routes: RouteRecordRaw[] = [
   { path: '/',      name: 'Home',  component: Home  },
-  { path: '/about', name: 'About', component: About }
+  { path: '/counter/:id', name: 'Counter', component: Counter, props: true },
 ]
 
 const router = createRouter({

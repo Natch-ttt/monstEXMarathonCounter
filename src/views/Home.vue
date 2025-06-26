@@ -57,15 +57,23 @@
         </template>
       </ion-list>
 
+      <div v-else class="empty-state">
+        <ion-icon :icon="warningOutline" size="large" />
+        <p>
+          カウンターがありません<br />
+          「＋」をタップして新規作成してください
+        </p>
+      </div>
+
     </ion-content>
   </ion-page>
 </template>
+
 <script setup lang="ts">
 import {
-  IonPage, IonHeader, IonToolbar, IonIcon,
-  IonTitle, IonContent, IonButton, IonButtons,
+  IonPage, IonHeader, IonToolbar, IonTitle, IonIcon,
+  IonContent, IonButton, IonButtons, IonItemSliding, 
   IonList, IonItem, IonLabel, IonItemOption, IonItemOptions,
-  IonItemSliding, 
   alertController, toastController, isPlatform, onIonViewWillLeave
 } from '@ionic/vue'
 import { addOutline, trashOutline, warningOutline } from 'ionicons/icons'
