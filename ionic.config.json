@@ -1,7 +1,0 @@
-{
-  "name": "monstEXMarathonCounter",
-  "integrations": {
-    "capacitor": {}
-  },
-  "type": "vue-vite"
-}
