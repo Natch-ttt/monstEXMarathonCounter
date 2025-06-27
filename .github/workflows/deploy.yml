@@ -4,7 +4,7 @@ name: Deploy to GitHub Pages
 on:
   push:
     branches:
-      - feature/homepage-design
+      - feature/counter-design
 
 jobs:
   build-and-deploy:
