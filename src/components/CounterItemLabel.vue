@@ -1,7 +1,7 @@
 <template>
   <ion-label>
-    <h2>{{ name }}</h2>
-    <p>{{ count }} 回</p>
+    <h2>{{ props.name }}</h2>
+    <p>{{ props.count }} 回</p>
   </ion-label>
 </template>
 

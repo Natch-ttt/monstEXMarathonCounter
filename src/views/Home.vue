@@ -20,7 +20,7 @@
             <ion-item button detail @click="goCounter(item.id)">
               <CounterItemLabel
                 :name="item.name"
-                :count="item.count"
+                :count="item.runCount"
               />
             </ion-item>
             <ion-item-options side="end">
@@ -43,7 +43,7 @@
             >
               <CounterItemLabel
                 :name="item.name"
-                :count="item.count"
+                :count="item.runCount"
               />
             </ion-item>
             <ion-button
@@ -73,8 +73,8 @@
 import {
   IonPage, IonHeader, IonToolbar, IonTitle, IonIcon,
   IonContent, IonButton, IonButtons, IonItemSliding, 
-  IonList, IonItem, IonLabel, IonItemOption, IonItemOptions,
-  alertController, toastController, isPlatform, onIonViewWillLeave
+  IonList, IonItem, IonItemOption, IonItemOptions,
+  alertController, isPlatform, onIonViewWillLeave
 } from '@ionic/vue'
 import { addOutline, trashOutline, warningOutline } from 'ionicons/icons'
 import { useCounterStore } from '@/stores/counter'

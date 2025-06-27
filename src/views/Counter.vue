@@ -1,202 +1,124 @@
+<!-- src/views/Counter.vue -->
 <template>
   <ion-page>
-
-    <!-- ヘッダー -->
     <ion-header translucent>
       <ion-toolbar>
         <ion-buttons slot="start">
           <ion-back-button default-href="/" />
         </ion-buttons>
-        <ion-title>
-          <div v-if="!editingName">{{ counter?.name }}</div>
-          <ion-input
-            v-else
-            v-model="editedName"
-            class="name-input"
-            @keyup.enter="saveName"
-          />
-        </ion-title>
-        <ion-buttons slot="end">
-          <ion-button v-if="!editingName" fill="clear" @click="startEditing">
-            <ion-icon slot="icon-only" :icon="pencilOutline" />
-          </ion-button>
-          <ion-button v-else fill="clear" @click="saveName">
-            <ion-icon slot="icon-only" :icon="checkmarkOutline" />
-          </ion-button>
-          <ion-button fill="clear" color="danger" @click="confirmRemove">
-            <ion-icon slot="icon-only" :icon="trashOutline" />
-          </ion-button>
-        </ion-buttons>
+        <ion-title>{{ item?.name || '…' }}</ion-title>
       </ion-toolbar>
     </ion-header>
 
-    <!-- コンテンツ -->
-    <ion-content class="ion-padding counter-content">
-      <div class="count-display">{{ counter?.count }}</div>
+    <ion-content fullscreen class="ion-padding">
+      <ion-grid>
+        <!-- メトリクス表示 -->
+        <ion-row>
+          <ion-col size="6">周回数</ion-col>
+          <ion-col size="6" class="ion-text-end">{{ item.runCount }}</ion-col>
+        </ion-row>
+        <ion-row>
+          <ion-col size="6">ラック</ion-col>
+          <ion-col size="6" class="ion-text-end">{{ item.encounterCount }}</ion-col>
+        </ion-row>
+        <ion-row>
+          <ion-col size="6">遭遇数</ion-col>
+          <ion-col size="6" class="ion-text-end">{{ item.recordRuns.length }}</ion-col>
+        </ion-row>
+        <ion-row>
+          <ion-col size="6">遭遇率</ion-col>
+          <ion-col size="6" class="ion-text-end">{{ store.encounterRate(id) }}</ion-col>
+        </ion-row>
+        <ion-row>
+          <ion-col size="6">最速記録</ion-col>
+          <ion-col size="6" class="ion-text-end">{{ store.fastest(id) ?? '–' }}</ion-col>
+        </ion-row>
+        <ion-row>
+          <ion-col size="6">最長記録</ion-col>
+          <ion-col size="6" class="ion-text-end">{{ store.slowest(id) ?? '–' }}</ion-col>
+        </ion-row>
+        <ion-row>
+          <ion-col size="6">EX敗北数</ion-col>
+          <ion-col size="6" class="ion-text-end">{{ item.exDefeats }}</ion-col>
+        </ion-row>
+      </ion-grid>
 
-      <div class="button-group">
-        <ion-button
-          size="large"
-          color="medium"
-          @click="decrement"
-        >
-          <ion-icon slot="icon-only" :icon="removeOutline" />
-        </ion-button>
-        <ion-button
-          size="large"
-          color="primary"
-          @click="increment"
-        >
-          <ion-icon slot="icon-only" :icon="addOutline" />
-        </ion-button>
-      </div>
-
-      <ion-button
-        expand="block"
-        color="tertiary"
-        @click="reset"
-      >
-        リセット
-      </ion-button>
+      <ion-row class="button-group">
+        <ion-col>
+          <ion-button color="medium" expand="block" @click="decrement">
+            −
+          </ion-button>
+        </ion-col>
+        <ion-col>
+          <ion-button color="primary" expand="block" @click="increment">
+            ＋
+          </ion-button>
+        </ion-col>
+        <ion-col>
+          <ion-button color="secondary" expand="block" @click="promptEncounter">
+            遭遇
+          </ion-button>
+        </ion-col>
+      </ion-row>
     </ion-content>
-
   </ion-page>
 </template>
 
 <script setup lang="ts">
+import { ref } from 'vue'
+import { useRoute } from 'vue-router'
 import {
-  IonPage, IonHeader, IonToolbar, IonTitle, IonIcon,
-  IonContent, IonButton, IonButtons, IonLabel, 
-  IonBackButton, IonInput,
-  alertController, toastController, isPlatform, onIonViewWillLeave
+  IonPage, IonHeader, IonToolbar, IonButtons,
+  IonBackButton, IonTitle, IonContent,
+  IonGrid, IonRow, IonCol, IonButton
 } from '@ionic/vue'
-import { ref, computed, onMounted } from 'vue'
-import { useRouter, useRoute } from 'vue-router'
+import { alertController } from '@ionic/vue'
 import { useCounterStore } from '@/stores/counter'
-import { blurActive } from '@/utils/focusUtils'
-import {
-  addOutline,
-  removeOutline,
-  trashOutline,
-  pencilOutline,
-  checkmarkOutline
-} from 'ionicons/icons'
 
-const store = useCounterStore()
-const router = useRouter()
 const route = useRoute()
-const isNative = isPlatform('capacitor') || isPlatform('cordova')
-
-// 1) ID から対象データを取得
 const id = route.params.id as string
-const counter = computed(() => store.counters.find(c => c.id === id))
+const store = useCounterStore()
 
-// 2) 編集用
-const editingName = ref(false)
-const editedName = ref('')
+// store から読み込んだアイテム
+const item = ref(store.getItem(id)!)
+if (!item.value) {
+  // 存在しなければリダイレクト
+  window.location.href = import.meta.env.BASE_URL
+}
 
-// 初期化時に名前セット
-onMounted(() => {
-  if (!counter.value) {
-    // 存在しなければ Home に戻す
-    router.replace({ name: 'Home' })
-  } else {
-    editedName.value = counter.value.name
-  }
-})
-
-// 3) 操作メソッド
+// ボタンハンドラ
 function increment() {
-  blurActive()
-  store.increment(id)
-  showToast('+1')
+  store.incrementRun(id)
 }
-
 function decrement() {
-  blurActive()
-  store.decrement(id)
-  showToast('-1')
+  store.decrementRun(id)
 }
 
-function reset() {
-  blurActive()
-  store.resetCount(id)
-  showToast('リセットしました')
-}
+async function promptEncounter() {
+  // フォーカスクリア
+  (document.activeElement as HTMLElement)?.blur()
 
-// 4) 名前編集
-function startEditing() {
-  blurActive()
-  editedName.value = counter.value!.name
-  editingName.value = true
-}
-function saveName() {
-  blurActive()
-  const n = editedName.value.trim()
-  if (n) {
-    store.updateName(id, n)
-    editingName.value = false
-  }
-}
-
-// 5) 削除確認
-async function confirmRemove() {
-  blurActive()
   const alert = await alertController.create({
-    header: `「${counter.value?.name}」を削除`,
-    message: '本当に削除しますか？',
+    header: '何体収集しましたか？',
+    inputs: [{ name: 'num', type: 'number', min: '0', value: '1' }],
     buttons: [
       { text: 'キャンセル', role: 'cancel' },
       {
-        text: '削除',
-        role: 'destructive',
-        handler: () => {
-          store.remove(id)
-          router.replace({ name: 'Home' })
+        text: '確定',
+        handler: (data) => {
+          const n = parseInt(data.num, 10)
+          store.onEncounter(id, isNaN(n) ? 0 : n)
         }
       }
     ]
   })
   await alert.present()
 }
-
-// 6) 操作通知トースト
-async function showToast(msg: string) {
-  blurActive()
-  const toast = await toastController.create({
-    message: msg,
-    duration: 500,
-    position: 'bottom'
-  })
-  toast.present()
-}
 </script>
 
 <style scoped>
-.counter-content {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-}
-
-.count-display {
-  font-size: 4rem;
-  font-weight: bold;
-  margin-bottom: 2rem;
-}
-
 .button-group {
-  display: flex;
-  gap: 1rem;
-  margin-bottom: 2rem;
-}
-
-.name-input {
-  --padding-start: 0;
-  font-size: 1.1rem;
-  max-width: 200px;
-  text-align: center;
+  margin-top: 2rem;
+  --ion-grid-column-padding: 0.5rem;
 }
 </style>
