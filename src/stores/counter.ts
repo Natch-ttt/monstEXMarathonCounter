@@ -1,15 +1,36 @@
 // src/stores/counter.ts
 import { defineStore } from 'pinia'
-import { ref, computed, watch } from 'vue'
+import { ref, watch } from 'vue'
+
+export interface RecordSuccess {
+  runs: number       // 当時の currentRunCount
+  timestamp: number  // ミリ秒
+}
+export interface EncounterLog {
+  count: number      // 取得数（0 は敗北）
+  timestamp: number
+}
 
 export interface CounterItem {
   id: string
   name: string
-  runCount: number           // 総周回数
-  currentRunCount: number    // 周回数
-  encounterCount: number     // 収集数（＝ラック）
-  recordRuns: number[]       // 遭遇したときの周回数を push
-  exDefeats: number          // 0収集＝敗北の回数
+
+  // 累計／今回分
+  runCount: number
+  currentRunCount: number
+
+  // 累計取得数／取得ログ
+  encounterCount: number
+  encounterLogs: EncounterLog[]
+
+  // 成功周回ログ
+  recordSuccess: RecordSuccess[]
+
+  // 敗北数（全期間）※期間集計は encounterLogs からフィルタ
+  exDefeats: number
+
+  // 周回ログ
+  runLogs: number[]
 }
 
 const STORAGE_KEY = 'monst-counters'
@@ -33,85 +54,145 @@ export const useCounterStore = defineStore('counter', () => {
       runCount: 0,
       currentRunCount: 0,
       encounterCount: 0,
-      recordRuns: [],
-      exDefeats: 0
+      encounterLogs: [],
+      recordSuccess: [],
+      exDefeats: 0,
+      runLogs: []
     })
   }
 
-  function remove(id: string) {
-    counters.value = counters.value.filter((c) => c.id !== id)
+  function getItem(id: string) {
+    return counters.value.find(c => c.id === id)
   }
 
   function incrementRun(id: string) {
     const item = getItem(id)!
     item.runCount++
     item.currentRunCount++
+    item.runLogs.push(Date.now())
   }
   function decrementRun(id: string) {
     const item = getItem(id)!
     if (item.runCount > 0) {
+      // 累計・今回分をデクリメント
       item.runCount--
       if (item.currentRunCount > 0) {
         item.currentRunCount--
       }
+      // ログも一件消す
+      if (item.runLogs.length) {
+        item.runLogs.pop()
+      }
     }
   }
 
-  /** 遭遇ボタン押下 → 数値入力後に呼ぶ */
   function onEncounter(id: string, num: number) {
     const item = getItem(id)!
-    // 敗北 or 遭遇
+    const ts = Date.now()
+    item.encounterLogs.push({ count: num, timestamp: ts })
     if (num <= 0) {
       item.exDefeats++
     } else {
       item.encounterCount += num
-      // 今回の周回数を記録
-      item.recordRuns.push(item.currentRunCount)
+      item.recordSuccess.push({
+        runs: item.currentRunCount,
+        timestamp: ts
+      })
     }
-    // リセット
     item.currentRunCount = 0
   }
 
-  function getItem(id: string) {
-    return counters.value.find((c) => c.id === id)
+  // 期間フィルタヘルパ
+  function filterTs<T extends { timestamp: number }>(ar: T[], period: Period): T[] {
+    const now = new Date()
+    return ar.filter(x => {
+      const d = new Date(x.timestamp)
+      if (period === 'all') return true
+      if (period === 'month') {
+        return d.getFullYear() === now.getFullYear()
+            && d.getMonth()    === now.getMonth()
+      }
+      // day
+      return d.getFullYear() === now.getFullYear()
+          && d.getMonth()    === now.getMonth()
+          && d.getDate()     === now.getDate()
+    })
   }
 
-  // computed
-  const fastest = (id: string) => {
-    const arr = getItem(id)!.recordRuns
-    return arr.length ? Math.min(...arr) : null
-  }
-  const slowest = (id: string) => {
-    const arr = getItem(id)!.recordRuns
-    return arr.length ? Math.max(...arr) : null
-  }
-  const encounterRate = (id: string) => {
+  type Period = 'all' | 'month' | 'day'
+
+  // 期間ごとの集計
+  function periodMetrics(
+    id: string,
+    period: Period,
+    dateKey?: string
+  ) {
     const item = getItem(id)!
-    return item.runCount
-      ? ((item.encounterCount / item.runCount) * 100).toFixed(2)
-      : '0.00'
-  }
+    const now = new Date()
 
-  // 平均周回数
-  function averageRun(id: string): string {
-    const rec = getItem(id)!.recordRuns
-    if (!rec.length) return '–'
-    const sum = rec.reduce((acc, cur) => acc + cur, 0)
-    // 小数第1位まで
-    return (sum / rec.length).toFixed(1)
+    // 共通フィルタ関数
+    const filtered = (ts: number) => {
+      const d = new Date(ts)
+      // dateKey が渡されていればそれを優先
+      if (dateKey) {
+        if (period === 'month') {
+          return d.toISOString().slice(0, 7) === dateKey
+        }
+        if (period === 'day') {
+          return d.toISOString().slice(0, 10) === dateKey
+        }
+      }
+      // dateKey がない場合は all/month/day の切り分け
+      if (period === 'all')   return true
+      if (period === 'month') return d.getFullYear() === now.getFullYear()
+                                && d.getMonth() === now.getMonth()
+      // day
+      return d.getFullYear() === now.getFullYear()
+          && d.getMonth()    === now.getMonth()
+          && d.getDate()     === now.getDate()
+    }
+
+    // runLogs は timestamp の配列
+    const runs = item.runLogs.filter(filtered).length
+
+    // encounterLogs: { count, timestamp }[]
+    const encLogs = item.encounterLogs.filter(e => filtered(e.timestamp))
+    const encounters = encLogs.filter(e => e.count > 0).reduce((sum, e) => sum + e.count, 0)
+    const defeats    = encLogs.filter(e => e.count <= 0).length
+
+    // recordSuccess: { runs, timestamp }[]
+    const succLogs = item.recordSuccess.filter(s => filtered(s.timestamp))
+    const fastest = succLogs.length ? Math.min(...succLogs.map(s => s.runs)) : null
+    const slowest = succLogs.length ? Math.max(...succLogs.map(s => s.runs)) : null
+    const average = succLogs.length
+      ? succLogs.reduce((sum, s) => sum + s.runs, 0) / succLogs.length
+      : null
+
+    // 最終更新時刻はすべてのログから最大 ts を取得
+    const allTs = [
+      ...item.runLogs,
+      ...item.encounterLogs.map(e => e.timestamp),
+      ...item.recordSuccess.map(s => s.timestamp)
+    ]
+    const lastTs = allTs.length ? Math.max(...allTs) : Date.now()
+
+    return {
+      runs,
+      totalRuns: item.runCount,
+      encounters,
+      encounterRate: runs ? (encounters / runs) * 100 : 0,
+      fastest,
+      slowest,
+      average,
+      defeats,
+      lastTs
+    }
   }
 
   return {
-    counters,
-    add,
-    remove,
-    incrementRun,
-    decrementRun,
-    onEncounter,
+    counters, add, remove: (id: string) => counters.value = counters.value.filter(c => c.id !== id),
+    incrementRun, decrementRun, onEncounter,
     getItem,
-    fastest,
-    slowest,
-    encounterRate,
-    averageRun,
+    periodMetrics
   }
 })

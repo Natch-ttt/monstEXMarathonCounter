@@ -11,10 +11,70 @@
 
     <ion-content fullscreen class="ion-padding">
       <div class="content-wrapper">
+        <!-- 期間モード切り替えボタン群 -->
+        <div class="period-switcher">
+          <button
+            v-for="opt in options"
+            :key="opt.value"
+            :class="['period-btn', { active: period === opt.value }]"
+            @click="onPeriodChange(opt.value)"
+          >
+            <ion-icon :icon="opt.icon" />
+            <span>{{ opt.label }}</span>
+            <div class="underline" v-if="period === opt.value"></div>
+          </button>
+        </div>
+
+        <!-- 日付／月選択用カレンダーモーダル -->
+        <ion-modal :is-open="showPicker" @didDismiss="showPicker=false">
+          <ion-header>
+            <ion-toolbar>
+              <ion-title>
+                {{ period==='month' ? '年月を選択' : '日付を選択' }}
+              </ion-title>
+              <ion-buttons slot="end">
+                <ion-button fill="clear" @click="showPicker=false">
+                  <ion-icon :icon="close" slot="icon-only" />
+                </ion-button>
+              </ion-buttons>
+            </ion-toolbar>
+          </ion-header>
+          <ion-content class="modal-content">
+            <ion-datetime
+              v-if="period==='month'"
+              css-class="compact-picker"
+              presentation="month-year"
+              :value="selectedMonthIso"
+              display-format="YYYY/MM"
+              picker-format="YYYY MMMM"
+              :min="minMonthIso"
+              :max="maxMonthIso"
+              :year-values="yearValues"
+              @ionChange="onMonthPicked"
+            />
+            <ion-datetime
+              v-else
+              css-class="compact-picker"
+              presentation="date"
+              :value="selectedDayIso"
+              display-format="YYYY/MM/DD"
+              picker-format="YYYY MMMM DD"
+              :min="minDayIso"
+              :max="maxDayIso"
+              @ionChange="onDayPicked"
+            />
+          </ion-content>
+        </ion-modal>
+
+        <!-- 最終更新時刻 -->
+        <p class="last-update">
+          最終更新: {{ lastUpdateFormatted }}
+        </p>
+
+        <!-- カードメトリクス -->
         <ion-grid class="metrics-grid">
-          <ion-row class="metrics-row">
-            <!-- size="6" で常に2列 -->
-            <ion-col size="6" v-for="m in metrics" :key="m.label">
+          <ion-row>
+            <ion-col size="6" v-for="m in dispMetrics" :key="m.label">
               <ion-card class="metric-card">
                 <ion-card-header>
                   <ion-card-title>
@@ -36,6 +96,7 @@
           </ion-row>
         </ion-grid>
 
+        <!-- 4) ボタン群 -->
         <ion-row class="button-group">
           <ion-col>
             <ion-button shape="round" fill="outline" expand="block" @click="decrement">−</ion-button>
@@ -53,37 +114,141 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { ref, computed } from 'vue'
 import { useRoute } from 'vue-router'
 import {
-  IonPage, IonHeader, IonToolbar, IonButtons, IonBackButton, IonTitle,
-  IonContent, IonGrid, IonRow, IonCol,
+  IonPage, IonHeader, IonToolbar, IonTitle, IonButton, IonButtons, IonBackButton,
+  IonContent, IonGrid, IonRow, IonCol, IonModal, IonDatetime, IonIcon,
   IonCard, IonCardHeader, IonCardTitle, IonCardContent,
-  IonIcon, IonButton, alertController
+  alertController
 } from '@ionic/vue'
-import { sparkles, trendingDown, trendingUp, close } from 'ionicons/icons'
+import {
+  sparkles, trendingDown, trendingUp, close,
+  calendarOutline, calendarSharp, todaySharp
+} from 'ionicons/icons'
 import { useCounterStore } from '@/stores/counter'
 
+// ルート／ストア
 const route = useRoute()
 const id = route.params.id as string
 const store = useCounterStore()
 
+// CounterItem の取得
 const item = computed(() => store.getItem(id)!)
-if (!item.value) window.location.href = import.meta.env.BASE_URL
+if (!item.value) {
+  window.location.href = import.meta.env.BASE_URL
+}
 
-// metrics: 今回の周回数と累計周回数を分けて表示
-const metrics = computed(() => [
-  { label: '周回数',    mdi: 'directions_run',         value: `${item.value.currentRunCount}周` },
-  { label: 'ラック',    icon: sparkles,                value: item.value.encounterCount },
-  { label: '遭遇数',    mdi: 'flag',                   value: item.value.recordRuns.length },
-  { label: '遭遇率',    mdi: 'percent',                value: `${store.encounterRate(id)}%` },
-  { label: '最短周回',   icon: trendingDown,           value: `${store.fastest(id)  ?? '–'}周` },
-  { label: '最長周回',   icon: trendingUp,             value: `${store.slowest(id)  ?? '–'}周` },
-  { label: '平均周回', mdi: 'align_vertical_center', value: `${store.averageRun(id)}周` },
-  { label: '総周回数',  mdi: 'history',                value: `${item.value.runCount}周` },
-  { label: 'EX敗北数',   icon: close, value:           item.value.exDefeats }
+// 画面上の期間ステート
+type Period = 'all' | 'month' | 'day'
+const period = ref<Period>('all')
+const showPicker = ref(false) // モーダル表示フラグ
+const options: {
+  value: Period
+  label: string
+  icon: any
+}[] = [
+  { value: 'all',   label: '累計',   icon: calendarOutline },
+  { value: 'month', label: '月次',   icon: calendarSharp },
+  { value: 'day',   label: '日付別', icon: todaySharp }
+]
+
+// 今月の1日を ISO に
+const today = new Date()
+const firstOfMonthUtc = new Date(Date.UTC(
+  today.getFullYear(),
+  today.getMonth(),  // 0-based の月
+  1                  // 1日
+)).toISOString()
+
+// selectedMonthIso: フル ISO
+const selectedMonthIso = ref(firstOfMonthUtc)
+// 外部ロジック用に YYYY-MM 部分だけ取る
+const selectedMonth = computed(() => selectedMonthIso.value.slice(0,7))
+
+// selectedDayIso: ISO 全日
+const defaultDayIso = today.toISOString().slice(0,10) + 'T00:00:00.000Z'
+const selectedDayIso = ref(defaultDayIso)
+const selectedDay    = computed(() => selectedDayIso.value.slice(0,10))
+
+// min/max もフル ISO 形式で
+const startYear = 2000
+const minMonthIso = startYear + '-01-01T00:00:00.000Z'
+const maxMonthIso = new Date().toISOString()
+const minDayIso   = startYear + '-01-01T00:00:00.000Z'
+const maxDayIso   = new Date().toISOString()
+
+// yearValues 配列を computed で生成
+const currentYear = today.getFullYear()
+const yearValues = computed(() => {
+  const years: number[] = []
+  for (let y = startYear; y <= currentYear; y++) {
+    years.push(y)
+  }
+  return years
+})
+
+// 切替時：allなら即閉じ／month/dayならモーダルを開く
+function onPeriodChange(v: Period) {
+  period.value = v
+  if (v === 'all') {
+    showPicker.value = false
+  } else {
+    showPicker.value = true
+  }
+}
+
+// 月次ピッカーで選択時
+function onMonthPicked(e: CustomEvent) {
+  selectedMonthIso.value = e.detail.value
+  // showPicker = false はしない
+}
+// 日付ピッカーで選択時
+function onDayPicked(e: CustomEvent) {
+  selectedDayIso.value = e.detail.value
+  showPicker.value = false
+}
+
+// `periodMetrics` で取得した生データ
+const pm = computed(() =>
+  store.periodMetrics(
+    id,
+    period.value,
+    period.value === 'month'
+      ? selectedMonth.value
+      : period.value === 'day'
+      ? selectedDay.value
+      : undefined
+  )
+)
+
+// 最終更新時刻をフォーマット
+const lastUpdate = computed(() => new Date(pm.value.lastTs))
+const lastUpdateFormatted = computed(() =>
+  new Intl.DateTimeFormat('ja-JP', {
+    year:   'numeric',
+    month:  '2-digit',
+    day:    '2-digit',
+    hour:   '2-digit',
+    minute: '2-digit',
+    second: '2-digit'
+  }).format(lastUpdate.value)
+)
+
+// テンプレート表示用 metrics 配列 
+const dispMetrics = computed(() => [
+  { label: '周回数',    mdi: 'directions_run',       value: `${pm.value.runs}周` },
+  { label: 'ラック',    icon: sparkles,              value: item.value.encounterCount },
+  { label: '遭遇数',    mdi: 'flag',                 value: pm.value.encounters },
+  { label: '遭遇率',    mdi: 'percent',              value: `${pm.value.encounterRate.toFixed(1)}%` },
+  { label: '最短周回',   icon: trendingDown,         value: pm.value.fastest  !== null ? `${pm.value.fastest}周` : '–' },
+  { label: '最長周回',   icon: trendingUp,           value: pm.value.slowest  !== null ? `${pm.value.slowest}周` : '–' },
+  { label: '平均周回', mdi: 'align_vertical_center', value: pm.value.average !== null ? `${pm.value.average.toFixed(1)}周` : '–' },
+  { label: '総周回数',  mdi: 'history',              value: `${pm.value.totalRuns}周` },
+  { label: 'EX敗北数',   icon: close,                value: pm.value.defeats }
 ])
 
+// ボタンハンドラ
 function increment() { store.incrementRun(id) }
 function decrement() { store.decrementRun(id) }
 
@@ -112,6 +277,66 @@ async function promptEncounter() {
 .content-wrapper {
   max-width: 480px;
   margin: 0 auto;
+}
+
+/* 期間ステート */
+.period-switcher {
+  display: flex;
+  justify-content: space-around;
+  margin: 1rem 0 0.5rem;
+}
+.period-btn {
+  position: relative;
+  background: none;
+  border: none;
+  padding: 0.4rem 0.6rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  color: var(--ion-color-medium);
+  font-size: 0.75rem;
+}
+.period-btn.active {
+  color: var(--ion-color-primary);
+}
+.period-btn .underline {
+  position: absolute;
+  bottom: 0;
+  width: 100%;
+  height: 2px;
+  background: var(--ion-color-primary);
+}
+.period-btn ion-icon {
+  font-size: 1.2rem;
+}
+.period-btn span {
+  font-size: 0.75rem;
+}
+
+/* モーダル内レイアウト */
+ion-modal .modal-wrapper {
+  max-width: 280px;
+  margin: auto;
+}
+
+.modal-content {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 1rem 0;
+}
+.modal-content ion-datetime {
+  max-width: 320px;
+  margin: auto;
+  width: 100%;
+}
+
+/* LastUpdate */
+.last-update {
+  font-size: 0.75rem;
+  text-align: center;
+  color: var(--ion-color-medium);
+  margin-bottom: 0.5rem;
 }
 
 /* カードグリッド */
