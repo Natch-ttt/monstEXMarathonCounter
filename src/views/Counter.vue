@@ -17,7 +17,7 @@
             v-for="opt in options"
             :key="opt.value"
             :class="['period-btn', { active: period === opt.value }]"
-            @click="onPeriodChange(opt.value)"
+            @click="openPopover(opt.value, $event)"
           >
             <ion-icon :icon="opt.icon" />
             <span>{{ opt.label }}</span>
@@ -28,32 +28,48 @@
         <!-- ポップオーバー形式の日付／月選択用カレンダー -->
         <ion-popover
           :is-open="showPicker"
-          @did-dismiss="showPicker = false"
+          :event="popoverEvent"
+          @did-dismiss="onPopoverDismiss"
           side="bottom"
           alignment="center"
           backdrop-dismiss="true"
-          css-class="compact-popover"
+          :cssClass="popoverClasses"
         >
+          <!-- Popover のヘッダー -->
+          <ion-header>
+            <ion-toolbar>
+              <ion-title>
+                {{ period === 'month' ? '年月を選択' : '日付を選択' }}
+              </ion-title>
+              <ion-buttons slot="end">
+                <ion-button fill="clear" @click="showPicker = false">
+                  <ion-icon slot="icon-only" :icon="close" />
+                </ion-button>
+              </ion-buttons>
+            </ion-toolbar>
+          </ion-header>
+          <!-- カレンダー本体 -->
           <ion-content class="popover-content">
             <ion-datetime
               v-if="period === 'month'"
               presentation="month-year"
-              :value="selectedMonthIso"
+              :value="selectedMonth"
               display-format="YYYY/MM"
               picker-format="YYYY MMMM"
               :year-values="yearValues"
-              :min="minMonthIso"
-              :max="maxMonthIso"
+              :min="minMonth"
+              :max="maxMonth"
               @ionChange="onMonthPicked"
             />
             <ion-datetime
               v-else
               presentation="date"
-              :value="selectedDayIso"
+              :value="selectedDay"
               display-format="YYYY/MM/DD"
               picker-format="YYYY MMMM DD"
-              :min="minDayIso"
-              :max="maxDayIso"
+              :year-values="yearValues"
+              :min="minDay"
+              :max="maxDay"
               @ionChange="onDayPicked"
             />
           </ion-content>
@@ -126,6 +142,8 @@ const route = useRoute()
 const id = route.params.id as string
 const store = useCounterStore()
 
+const today = new Date()
+
 // CounterItem の取得
 const item = computed(() => store.getItem(id)!)
 if (!item.value) {
@@ -135,7 +153,23 @@ if (!item.value) {
 // 画面上の期間ステート
 type Period = 'all' | 'month' | 'day'
 const period = ref<Period>('all')
-const showPicker = ref(false) // モーダル表示フラグ
+const showPicker     = ref(false)
+const popoverEvent   = ref<UIEvent>()
+function openPopover(mode: Period, e: UIEvent) {
+  period.value      = mode
+  // 累計はポップオーバーを開かない
+  if (mode === 'all') {
+    showPicker.value = false
+    popoverEvent.value = undefined
+    return
+  }
+  popoverEvent.value = e
+  showPicker.value  = true
+}
+function onPopoverDismiss() {
+  showPicker.value = false
+  popoverEvent.value = undefined
+}
 const options: {
   value: Period
   label: string
@@ -146,30 +180,35 @@ const options: {
   { value: 'day',   label: '日付別', icon: todaySharp }
 ]
 
-// 今月の1日を ISO に
-const today = new Date()
-const firstOfMonthUtc = new Date(Date.UTC(
+// ポップオーバーに渡すクラスを computed で生成
+const popoverClasses = computed<string[]>(() => {
+  // month モードなら compact-popover のみ
+  if (period.value === 'month') return ['compact-popover']
+  // day モードなら compact-popover + wide-popover
+  if (period.value === 'day') return ['compact-popover','wide-popover']
+  // all モードは開かないはずなので fallback
+  return []
+})
+
+// 月次：YYYY-MM 文字列生成
+const thisMonth = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}`
+const selectedMonth = ref(thisMonth)
+
+// 日次：YYYY-MM-DD 文字列生成
+const todayStr = [
   today.getFullYear(),
-  today.getMonth(),  // 0-based の月
-  1                  // 1日
-)).toISOString()
+  String(today.getMonth()+1).padStart(2,'0'),
+  String(today.getDate()).padStart(2,'0')
+].join('-')
+const selectedDay = ref(todayStr)
 
-// selectedMonthIso: フル ISO
-const selectedMonthIso = ref(firstOfMonthUtc)
-// 外部ロジック用に YYYY-MM 部分だけ取る
-const selectedMonth = computed(() => selectedMonthIso.value.slice(0,7))
-
-// selectedDayIso: ISO 全日
-const defaultDayIso = today.toISOString().slice(0,10) + 'T00:00:00.000Z'
-const selectedDayIso = ref(defaultDayIso)
-const selectedDay    = computed(() => selectedDayIso.value.slice(0,10))
-
-// min/max もフル ISO 形式で
+// min/max も同様に文字列生成
 const startYear = 2000
-const minMonthIso = startYear + '-01-01T00:00:00.000Z'
-const maxMonthIso = new Date().toISOString()
-const minDayIso   = startYear + '-01-01T00:00:00.000Z'
-const maxDayIso   = new Date().toISOString()
+const minMonth = `${startYear}-01`
+const maxMonth = thisMonth
+
+const minDay = `${startYear}-01-01`
+const maxDay = todayStr
 
 // yearValues 配列を computed で生成
 const currentYear = today.getFullYear()
@@ -181,25 +220,13 @@ const yearValues = computed(() => {
   return years
 })
 
-// 切替時：allなら即閉じ／month/dayならモーダルを開く
-function onPeriodChange(v: Period) {
-  period.value = v
-  if (v === 'all') {
-    showPicker.value = false
-  } else {
-    showPicker.value = true
-  }
-}
-
 // 月次ピッカーで選択時
 function onMonthPicked(e: CustomEvent) {
-  selectedMonthIso.value = e.detail.value
-  // showPicker = false はしない
+  selectedMonth.value = e.detail.value
 }
 // 日付ピッカーで選択時
 function onDayPicked(e: CustomEvent) {
-  selectedDayIso.value = e.detail.value
-  showPicker.value = false
+  selectedDay.value = e.detail.value
 }
 
 // `periodMetrics` で取得した生データ
@@ -306,21 +333,29 @@ async function promptEncounter() {
   font-size: 0.75rem;
 }
 
-/* カレンダーポップオーバー */
-.compact-popover {
-  --width: 360px;
-  --height: auto;
-  border-radius: 0.5rem;
+/* — Popover 全体をコンパクト化 — */
+/* ヘッダーやツールバー、タイトル、ボタン、アイコン、Datetime のフォントを小さめに */
+::v-deep(.compact-popover ion-header),
+::v-deep(.compact-popover ion-toolbar),
+::v-deep(.compact-popover ion-title),
+::v-deep(.compact-popover ion-button),
+::v-deep(.compact-popover ion-icon),
+::v-deep(.compact-popover .popover-content),
+::v-deep(.compact-popover ion-datetime) {
+  font-size: 0.85rem !important;
 }
-.compact-popover .modal-content {
-  --padding-top:    0.4rem;
-  --padding-bottom: 0.4rem;
-  --padding-start:  0.4rem;
-  --padding-end:    0.4rem;
+
+/* ツールバーの高さをコンパクトに */
+::v-deep(.compact-popover ion-toolbar) {
+  --min-height: 2rem;
 }
-.compact-popover ion-datetime {
-  max-width: 340px;
-  margin: auto;
+
+/* Popover 内コンテンツの余白を詰める */
+::v-deep(.compact-popover .popover-content) {
+  --padding-top:    0.3rem;
+  --padding-bottom: 0.3rem;
+  --padding-start:  0.3rem;
+  --padding-end:    0.3rem;
 }
 
 /* LastUpdate */
@@ -345,13 +380,12 @@ async function promptEncounter() {
   --background: var(--ion-color-light);
   border-radius: 0.4rem;
 }
-/* ヘッダーとコンテンツ部分をコンパクトに */
 .metric-card::part(header),
 .metric-card::part(content) {
-  padding-block-start: 0.2rem;   /* 上下の余白 */
-  padding-block-end:   0.2rem;
-  padding-inline-start:0.4rem;   /* 左右の余白 */
-  padding-inline-end:  0.4rem;
+  padding-block-start:   0.2rem;
+  padding-block-end:     0.2rem;
+  padding-inline-start:  0.4rem;
+  padding-inline-end:    0.4rem;
 }
 
 .metric-value {
@@ -366,6 +400,7 @@ async function promptEncounter() {
   font-size: 1rem;
   vertical-align: middle;
   margin-right: 0.2rem;
+  padding-bottom: 0.2rem;
 }
 
 /* ボタン群 */

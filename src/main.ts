@@ -12,6 +12,8 @@ import '@ionic/vue/css/typography.css'
 import '@ionic/vue/css/display.css'
 import './theme/variables.css'
 
+import './global.css'
+
 // Creates a Pinia instance
 import { createPinia } from 'pinia'
 import { piniaPersistPlugin } from '@/plugins/piniaPersist'

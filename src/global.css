@@ -1,0 +1,10 @@
+/* 月次 (compact) */
+ion-popover.compact-popover {
+  --width: 280px;
+  --height: auto;
+}
+/* 日次 (wide) */
+ion-popover.compact-popover.wide-popover {
+  --width: 340px;
+  --height: auto;
+}
