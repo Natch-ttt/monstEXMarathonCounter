@@ -25,8 +25,12 @@
           </button>
         </div>
 
+        <!-- 範囲ラベル -->
+        <p class="current-period">{{ currentPeriodLabel }}</p>
+
         <!-- ポップオーバー形式の日付／月選択用カレンダー -->
         <ion-popover
+          :key="`popover-${period}`"
           :is-open="showPicker"
           :event="popoverEvent"
           @did-dismiss="onPopoverDismiss"
@@ -229,6 +233,21 @@ function onDayPicked(e: CustomEvent) {
   selectedDay.value = e.detail.value
 }
 
+// 画面上で選択中の「年月／日付」を人に読みやすく整形
+const currentPeriodLabel = computed(() => {
+  if (period.value === 'all') {
+    return ''
+  }
+  if (period.value === 'month') {
+    // selectedMonth は "YYYY-MM"
+    const [y, m] = selectedMonth.value.split('-')
+    return `${y}年${m}月`
+  }
+  // day モード
+  const [yy, mm, dd] = selectedDay.value.split('-')
+  return `${yy}年${mm}月${dd}日`
+})
+
 // `periodMetrics` で取得した生データ
 const pm = computed(() =>
   store.periodMetrics(
@@ -364,6 +383,15 @@ async function promptEncounter() {
   text-align: center;
   color: var(--ion-color-medium);
   margin-bottom: 0.5rem;
+}
+
+.current-period {
+  text-align: center;
+  font-size: 0.9rem;
+  font-weight: 500;
+  margin: 0.4rem 0;
+  min-height: 1.5em;
+  color: var(--ion-color-primary);
 }
 
 /* カードグリッド */

@@ -1,3 +1,9 @@
+/* 入力フィールドのフォントサイズを16px */
+ion-app input,
+ion-app textarea {
+  font-size: 16px !important;
+}
+
 /* 月次 (compact) */
 ion-popover.compact-popover {
   --width: 280px;
