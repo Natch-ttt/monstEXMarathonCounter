@@ -25,36 +25,29 @@
           </button>
         </div>
 
-        <!-- 日付／月選択用カレンダーモーダル -->
-        <ion-modal :is-open="showPicker" @didDismiss="showPicker=false">
-          <ion-header>
-            <ion-toolbar>
-              <ion-title>
-                {{ period==='month' ? '年月を選択' : '日付を選択' }}
-              </ion-title>
-              <ion-buttons slot="end">
-                <ion-button fill="clear" @click="showPicker=false">
-                  <ion-icon :icon="close" slot="icon-only" />
-                </ion-button>
-              </ion-buttons>
-            </ion-toolbar>
-          </ion-header>
-          <ion-content class="modal-content">
+        <!-- ポップオーバー形式の日付／月選択用カレンダー -->
+        <ion-popover
+          :is-open="showPicker"
+          @did-dismiss="showPicker = false"
+          side="bottom"
+          alignment="center"
+          backdrop-dismiss="true"
+          css-class="compact-popover"
+        >
+          <ion-content class="popover-content">
             <ion-datetime
-              v-if="period==='month'"
-              css-class="compact-picker"
+              v-if="period === 'month'"
               presentation="month-year"
               :value="selectedMonthIso"
               display-format="YYYY/MM"
               picker-format="YYYY MMMM"
+              :year-values="yearValues"
               :min="minMonthIso"
               :max="maxMonthIso"
-              :year-values="yearValues"
               @ionChange="onMonthPicked"
             />
             <ion-datetime
               v-else
-              css-class="compact-picker"
               presentation="date"
               :value="selectedDayIso"
               display-format="YYYY/MM/DD"
@@ -64,7 +57,7 @@
               @ionChange="onDayPicked"
             />
           </ion-content>
-        </ion-modal>
+        </ion-popover>
 
         <!-- 最終更新時刻 -->
         <p class="last-update">
@@ -96,7 +89,7 @@
           </ion-row>
         </ion-grid>
 
-        <!-- 4) ボタン群 -->
+        <!-- 操作ボタン -->
         <ion-row class="button-group">
           <ion-col>
             <ion-button shape="round" fill="outline" expand="block" @click="decrement">−</ion-button>
@@ -313,22 +306,21 @@ async function promptEncounter() {
   font-size: 0.75rem;
 }
 
-/* モーダル内レイアウト */
-ion-modal .modal-wrapper {
-  max-width: 280px;
-  margin: auto;
+/* カレンダーポップオーバー */
+.compact-popover {
+  --width: 360px;
+  --height: auto;
+  border-radius: 0.5rem;
 }
-
-.modal-content {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  padding: 1rem 0;
+.compact-popover .modal-content {
+  --padding-top:    0.4rem;
+  --padding-bottom: 0.4rem;
+  --padding-start:  0.4rem;
+  --padding-end:    0.4rem;
 }
-.modal-content ion-datetime {
-  max-width: 320px;
+.compact-popover ion-datetime {
+  max-width: 340px;
   margin: auto;
-  width: 100%;
 }
 
 /* LastUpdate */
