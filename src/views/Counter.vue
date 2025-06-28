@@ -115,19 +115,28 @@ async function promptEncounter() {
 }
 
 /* カードグリッド */
-.metrics-grid { margin-bottom: 0.8rem; }
-.metrics-row { row-gap: 0.1rem; }
+.metrics-grid {
+  --ion-grid-column-padding: 0.1rem;  /* 列間 */
+  --ion-grid-row-padding:    0.1rem;  /* 行間 */
+  margin-bottom: 0.5rem;
+}
 
 /* カードをコンパクトに */
 .metric-card {
-  --padding-start: 0.2rem;
-  --padding-end:   0.2rem;
-  --padding-top:   0.2rem;
-  --padding-bottom:0.2rem;
+  margin: 0.2rem;
   text-align: center;
   --background: var(--ion-color-light);
   border-radius: 0.4rem;
 }
+/* ヘッダーとコンテンツ部分をコンパクトに */
+.metric-card::part(header),
+.metric-card::part(content) {
+  padding-block-start: 0.2rem;   /* 上下の余白 */
+  padding-block-end:   0.2rem;
+  padding-inline-start:0.4rem;   /* 左右の余白 */
+  padding-inline-end:  0.4rem;
+}
+
 .metric-value {
   display: block;
   font-size: 1.3rem;
