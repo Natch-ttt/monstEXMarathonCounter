@@ -103,12 +103,15 @@
               <ion-card class="metric-card">
                 <ion-card-header>
                   <ion-card-title>
-                    <!-- Ionicon か MDI か切り替え -->
+                    <!-- Ionicon か MDI か FontAwesomeIcon 切り替え -->
                     <template v-if="m.mdi">
                       <i class="material-icons metric-icon">{{ m.mdi }}</i>
                     </template>
+                    <template v-else-if="m.fai">
+                      <font-awesome-icon :icon="m.fai" class="metric-icon" />
+                    </template>
                     <template v-else>
-                      <ion-icon :icon="m.icon" class="metric-icon" />
+                      <ion-icon :icon="m.ion" class="metric-icon" />
                     </template>
                     {{ m.label }}
                   </ion-card-title>
@@ -152,7 +155,7 @@
                   @click="promptReset"
                   :disabled="pm.runs === 0"
                 >
-                  リセット
+                  <font-awesome-icon :icon="faEraser" />
                 </ion-button>
               </div>
             </ion-col>
@@ -196,16 +199,19 @@ import { ref, computed } from 'vue'
 import { useRoute } from 'vue-router'
 import {
   IonPage, IonHeader, IonToolbar, IonTitle, IonButton, IonButtons, IonBackButton,
-  IonContent, IonGrid, IonRow, IonCol, IonModal, IonDatetime, IonIcon,
+  IonContent, IonGrid, IonRow, IonCol, IonDatetime, IonIcon,
   IonCard, IonCardHeader, IonCardTitle, IonCardContent,
   alertController
 } from '@ionic/vue'
 import {
-  sparkles, trendingDown, trendingUp, close,
-  calendarOutline, calendarSharp, todaySharp
+  sparkles, close, calendarOutline, calendarSharp, todaySharp
 } from 'ionicons/icons'
+import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
+import type { IconDefinition } from '@fortawesome/fontawesome-svg-core'
+import {
+  faPersonRunning, faPercent, faClockRotateLeft, faEraser
+} from '@fortawesome/free-solid-svg-icons'
 import { useCounterStore } from '@/stores/counter'
-
 // ルート／ストア
 const route = useRoute()
 const id = route.params.id as string
@@ -347,17 +353,33 @@ const lastUpdateFormatted = computed(() =>
   }).format(lastUpdate.value)
 )
 
+// 1件分のメトリクス定義
+interface Metric {
+  label: string
+  unit: string
+  value: string | number
+
+  /** MDI を使う場合はアイコン文字列 */
+  mdi?: string
+
+  /** Ionicons を使う場合（ion-icon の :icon に渡す） */
+  ion?: any /* Ionicons v7 の場合は IconDefinition 型 */
+
+  /** FontAwesome を使う場合 */
+  fai?: IconDefinition
+}
+
 // テンプレート表示用 metrics 配列 
-const dispMetrics = computed(() => [
-  { label: '周回数',   mdi: 'directions_run',        unit: '周', value: pm.value.runs },
-  { label: 'ラック',   icon: sparkles,               unit: '',   value: item.value.encounterCount },
+const dispMetrics = computed<Metric[]>(() => [
+  { label: '周回数',   fai: faPersonRunning,         unit: '周', value: pm.value.runs },
+  { label: 'ラック',   ion: sparkles,                unit: '',   value: item.value.encounterCount },
   { label: '遭遇数',   mdi: 'flag',                  unit: '',   value: pm.value.encounters },
-  { label: '遭遇率',   mdi: 'percent',               unit: '%',  value: pm.value.encounterRate.toFixed(2) },
-  { label: '最短周回', icon: trendingDown,           unit: pm.value.fastest !== null ? '周' : '',  value: pm.value.fastest  ?? '–' },
-  { label: '最長周回', icon: trendingUp,             unit: pm.value.slowest  !== null ? '周' : '', value: pm.value.slowest  ?? '–' },
+  { label: '遭遇率',   fai: faPercent,               unit: '%',  value: pm.value.encounterRate.toFixed(2) },
+  { label: '最短周回', mdi: 'trending_down',            unit: pm.value.fastest !== null ? '周' : '',  value: pm.value.fastest  ?? '–' },
+  { label: '最長周回', mdi: 'trending_up',              unit: pm.value.slowest  !== null ? '周' : '', value: pm.value.slowest  ?? '–' },
   { label: '平均周回', mdi: 'align_vertical_center', unit: pm.value.average !== null ? '周' : '',  value: pm.value.average?.toFixed(1) ?? '–' },
-  { label: '総周回数', mdi: 'history',               unit: '周', value: pm.value.totalRuns },
-  { label: 'EX敗北数', icon: close,                  unit: '',   value: pm.value.defeats }
+  { label: '総周回数', fai: faClockRotateLeft,               unit: '周', value: pm.value.totalRuns },
+  { label: 'EX敗北数', ion: close,                   unit: '',   value: pm.value.defeats }
 ])
 
 // ボタンハンドラ
@@ -562,11 +584,28 @@ async function promptEncounter() {
 }
 
 /* ボタン群 */
+.button-group {
+  /* フッター内グリッド全体を中央に */
+  max-width: 500px;
+  margin: 0 auto;
+  padding: 0.1rem 1.5rem;
+}
+.button-group ion-row {
+  /* 行単位でも中央寄せ */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.5rem;
+  /* 折り返し禁止 */
+  flex-wrap: nowrap !important;
+}
 .small-btn-group {
   /* 小ボタンを縦に並べる */
   display: flex;
   flex-direction: column;
   gap: 0.1rem;
+  margin: 0 auto;
+  min-width: 1rem;
 }
 .small-btn-group ion-button {
   /* 「−」「リセット」両ボタンの共通調整 */
@@ -575,20 +614,6 @@ async function promptEncounter() {
   --padding-start:  0.4rem;
   --padding-end:    0.4rem;
   font-size: 0.8rem;
-}
-.button-group {
-  /* フッター内グリッド全体を中央に */
-  max-width: 500px;
-  margin: 0 auto;
-  padding: 0.1rem 1rem;
-}
-.button-group ion-row {
-  /* 行単位でも中央寄せ */
-  display: flex;
-  flex-wrap: nowrap !important; 
-  justify-content: center;
-  align-items: center;
-  gap: 1rem;
 }
 ion-button {
   /* ボタンの丸みを控えめに */
