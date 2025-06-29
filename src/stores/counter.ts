@@ -33,6 +33,19 @@ export interface CounterItem {
   runLogs: number[]
 }
 
+// カウンター用の集計結果型
+export interface PeriodMetrics {
+  runs: number;
+  totalRuns: number;
+  encounters: number;
+  encounterRate: number;
+  fastest: number | null;
+  slowest: number | null;
+  average: number | null;
+  defeats: number;
+  lastTs: number;
+}
+
 const STORAGE_KEY = 'monst-counters'
 
 export const useCounterStore = defineStore('counter', () => {
@@ -99,19 +112,32 @@ export const useCounterStore = defineStore('counter', () => {
         timestamp: ts
       })
     }
+    // 今回分カウンタをリセット
     item.currentRunCount = 0
+
+    // 月別／日別のフィルタ元となるログもクリア
+    item.runLogs = []
   }
 
   // 期間フィルタヘルパ
-  function filterTs<T extends { timestamp: number }>(ar: T[], period: Period): T[] {
+  function filterTs<T extends { timestamp: number }>(
+    ar: T[],
+    period: Period,
+    dateKey?: string
+  ): T[] {
     const now = new Date()
     return ar.filter(x => {
       const d = new Date(x.timestamp)
-      if (period === 'all') return true
-      if (period === 'month') {
+      // dateKey 優先
+      if (dateKey) {
+        if (period === 'month') return d.toISOString().slice(0,7) === dateKey
+        if (period === 'day')   return d.toISOString().slice(0,10) === dateKey
+      }
+      // dateKey がないなら all/month/day
+      if (period === 'all')   return true
+      if (period === 'month')
         return d.getFullYear() === now.getFullYear()
             && d.getMonth()    === now.getMonth()
-      }
       // day
       return d.getFullYear() === now.getFullYear()
           && d.getMonth()    === now.getMonth()
@@ -126,47 +152,44 @@ export const useCounterStore = defineStore('counter', () => {
     id: string,
     period: Period,
     dateKey?: string
-  ) {
+  ): PeriodMetrics {
     const item = getItem(id)!
-    const now = new Date()
 
-    // 共通フィルタ関数
-    const filtered = (ts: number) => {
-      const d = new Date(ts)
-      // dateKey が渡されていればそれを優先
-      if (dateKey) {
-        if (period === 'month') {
-          return d.toISOString().slice(0, 7) === dateKey
-        }
-        if (period === 'day') {
-          return d.toISOString().slice(0, 10) === dateKey
-        }
-      }
-      // dateKey がない場合は all/month/day の切り分け
-      if (period === 'all')   return true
-      if (period === 'month') return d.getFullYear() === now.getFullYear()
-                                && d.getMonth() === now.getMonth()
-      // day
-      return d.getFullYear() === now.getFullYear()
-          && d.getMonth()    === now.getMonth()
-          && d.getDate()     === now.getDate()
-    }
+    // 今サイクルの runLogs をオブジェクト化
+    const runEntries = item.runLogs.map(ts => ({ timestamp: ts }))
 
-    // runLogs は timestamp の配列
-    const runs = item.runLogs.filter(filtered).length
+    // 期間フィルタ
+    const filteredRuns = filterTs(runEntries,        period, dateKey)
+    const filteredSucc = filterTs(item.recordSuccess, period, dateKey)
 
-    // encounterLogs: { count, timestamp }[]
-    const encLogs = item.encounterLogs.filter(e => filtered(e.timestamp))
-    const encounters = encLogs.filter(e => e.count > 0).reduce((sum, e) => sum + e.count, 0)
+    // encounters／defeats フィルタ
+    const encLogs    = filterTs(item.encounterLogs,      period, dateKey)
+    const encounters = encLogs.filter(e => e.count > 0).length
     const defeats    = encLogs.filter(e => e.count <= 0).length
 
-    // recordSuccess: { runs, timestamp }[]
-    const succLogs = item.recordSuccess.filter(s => filtered(s.timestamp))
-    const fastest = succLogs.length ? Math.min(...succLogs.map(s => s.runs)) : null
-    const slowest = succLogs.length ? Math.max(...succLogs.map(s => s.runs)) : null
-    const average = succLogs.length
-      ? succLogs.reduce((sum, s) => sum + s.runs, 0) / succLogs.length
+    // fastest/slowest/average は recordSuccess から
+    const fastest = filteredSucc.length ? Math.min(...filteredSucc.map(s => s.runs)) : null
+    const slowest = filteredSucc.length ? Math.max(...filteredSucc.map(s => s.runs)) : null
+    const average = filteredSucc.length
+      ? filteredSucc.reduce((s, r) => s + r.runs, 0) / filteredSucc.length
       : null
+
+    // runs は「今サイクルの進行分」
+    const runs = filteredRuns.length
+
+    // totalRuns は period によって切り分け
+    let totalRuns: number
+    if (period === 'all') {
+      // 全期間ならアイテムの累計値
+      totalRuns = item.runCount
+    } else {
+      // 月別/日別なら「完了サイクルの合計 + 今動いているサイクル分」
+      const sumSuccRuns = filteredSucc.reduce((s, r) => s + r.runs, 0)
+      totalRuns = sumSuccRuns + runs
+    }
+
+    // 遭遇率
+    const encounterRate = totalRuns ? (encounters / totalRuns) * 100 : 0
 
     // 最終更新時刻はすべてのログから最大 ts を取得
     const allTs = [
@@ -178,9 +201,9 @@ export const useCounterStore = defineStore('counter', () => {
 
     return {
       runs,
-      totalRuns: item.runCount,
+      totalRuns,
       encounters,
-      encounterRate: runs ? (encounters / runs) * 100 : 0,
+      encounterRate,
       fastest,
       slowest,
       average,
@@ -193,6 +216,7 @@ export const useCounterStore = defineStore('counter', () => {
     counters, add, remove: (id: string) => counters.value = counters.value.filter(c => c.id !== id),
     incrementRun, decrementRun, onEncounter,
     getItem,
-    periodMetrics
+    periodMetrics,
+    filterTs
   }
 })

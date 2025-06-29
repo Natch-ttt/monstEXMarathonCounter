@@ -137,6 +137,7 @@
                 fill="outline"
                 expand="block"
                 @click="decrement"
+                :disabled="pm.runs === 0"
               >
                 −
               </ion-button>
@@ -157,6 +158,7 @@
                 color="tertiary"
                 expand="block"
                 @click="promptEncounter"
+                :disabled="pm.runs === 0"
               >
                 遭遇
               </ion-button>
@@ -299,14 +301,9 @@ const currentPeriodLabel = computed(() => {
 
 // `periodMetrics` で取得した生データ
 const pm = computed(() =>
-  store.periodMetrics(
-    id,
-    period.value,
-    period.value === 'month'
-      ? selectedMonth.value
-      : period.value === 'day'
-      ? selectedDay.value
-      : undefined
+  store.periodMetrics(id, period.value, period.value!=='all'
+    ? (period.value==='month' ? selectedMonth.value : selectedDay.value)
+    : undefined
   )
 )
 
@@ -325,15 +322,15 @@ const lastUpdateFormatted = computed(() =>
 
 // テンプレート表示用 metrics 配列 
 const dispMetrics = computed(() => [
-  { label: '周回数',    mdi: 'directions_run',       unit: '周', value: pm.value.runs },
-  { label: 'ラック',    icon: sparkles,              unit: '',   value: item.value.encounterCount },
-  { label: '遭遇数',    mdi: 'flag',                 unit: '',   value: pm.value.encounters },
-  { label: '遭遇率',    mdi: 'percent',              unit: '%',  value: pm.value.encounterRate.toFixed(2) },
-  { label: '最短周回',   icon: trendingDown,         unit: pm.value.fastest !== null ? '周' : '',  value: pm.value.fastest  ?? '–' },
-  { label: '最長周回',   icon: trendingUp,           unit: pm.value.slowest  !== null ? '周' : '', value: pm.value.slowest  ?? '–' },
+  { label: '周回数',   mdi: 'directions_run',        unit: '周', value: pm.value.runs },
+  { label: 'ラック',   icon: sparkles,               unit: '',   value: item.value.encounterCount },
+  { label: '遭遇数',   mdi: 'flag',                  unit: '',   value: pm.value.encounters },
+  { label: '遭遇率',   mdi: 'percent',               unit: '%',  value: pm.value.encounterRate.toFixed(2) },
+  { label: '最短周回', icon: trendingDown,           unit: pm.value.fastest !== null ? '周' : '',  value: pm.value.fastest  ?? '–' },
+  { label: '最長周回', icon: trendingUp,             unit: pm.value.slowest  !== null ? '周' : '', value: pm.value.slowest  ?? '–' },
   { label: '平均周回', mdi: 'align_vertical_center', unit: pm.value.average !== null ? '周' : '',  value: pm.value.average?.toFixed(1) ?? '–' },
-  { label: '総周回数',  mdi: 'history',              unit: '周', value: pm.value.totalRuns },
-  { label: 'EX敗北数',   icon: close,                unit: '',   value: pm.value.defeats }
+  { label: '総周回数', mdi: 'history',               unit: '周', value: pm.value.totalRuns },
+  { label: 'EX敗北数', icon: close,                  unit: '',   value: pm.value.defeats }
 ])
 
 // ボタンハンドラ
@@ -497,7 +494,7 @@ async function promptEncounter() {
 
 .metric-value {
   display: block;
-  font-size: 1.5rem;
+  font-size: 1.2rem;
   font-weight: bold;
   margin-top: 0;
   padding-left: 0.4rem;
@@ -511,7 +508,7 @@ async function promptEncounter() {
 
 /* アイコンと数値フォントサイズを小さく */
 .metric-icon {
-  font-size: 1.4rem;
+  font-size: 1.2rem;
   vertical-align: middle;
   margin-right: 0.2rem;
   padding-bottom: 0.2rem;
