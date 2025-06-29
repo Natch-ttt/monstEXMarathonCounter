@@ -17,7 +17,7 @@
             v-for="opt in options"
             :key="opt.value"
             :class="['period-btn', { active: period === opt.value }]"
-            @click="openPopover(opt.value, $event)"
+            @click="onPeriodChange(opt.value)"
           >
             <ion-icon :icon="opt.icon" />
             <span>{{ opt.label }}</span>
@@ -25,11 +25,23 @@
           </button>
         </div>
 
-        <!-- 範囲ラベル -->
-        <p class="current-period">{{ currentPeriodLabel }}</p>
+        <!-- 範囲ラベル ＋ カレンダーアイコン -->
+        <div class="period-header">
+          <p class="current-period">{{ currentPeriodLabel }}</p>
+          <!-- periodがall以外のときだけ表示 -->
+          <ion-button
+            v-if="period !== 'all'"
+            fill="clear"
+            class="calendar-btn"
+            @click.stop="openPopover($event)"
+          >
+            <ion-icon slot="icon-only" :icon="currentPeriodIcon" />
+          </ion-button>
+        </div>
 
         <!-- ポップオーバー形式の日付／月選択用カレンダー -->
         <ion-popover
+          v-if="period !== 'all'"
           :key="`popover-${period}`"
           :is-open="showPicker"
           :event="popoverEvent"
@@ -102,27 +114,57 @@
                   </ion-card-title>
                 </ion-card-header>
                 <ion-card-content>
-                  <span class="metric-value">{{ m.value }}</span>
+                  <span class="metric-value">
+                    {{ m.value }}
+                    <span v-if="m.unit" class="metric-unit">{{ m.unit }}</span>
+                  </span>
                 </ion-card-content>
               </ion-card>
             </ion-col>
           </ion-row>
         </ion-grid>
-
-        <!-- 操作ボタン -->
-        <ion-row class="button-group">
-          <ion-col>
-            <ion-button shape="round" fill="outline" expand="block" @click="decrement">−</ion-button>
-          </ion-col>
-          <ion-col>
-            <ion-button shape="round" color="primary" expand="block" @click="increment">＋</ion-button>
-          </ion-col>
-          <ion-col>
-            <ion-button shape="round" color="tertiary" expand="block" @click="promptEncounter">遭遇</ion-button>
-          </ion-col>
-        </ion-row>
       </div>
     </ion-content>
+
+    <!-- フッターに固定ボタン群 -->
+    <ion-footer>
+      <ion-toolbar>
+        <ion-grid class="button-group">
+          <ion-row>
+            <ion-col>
+              <ion-button
+                shape="round"
+                fill="outline"
+                expand="block"
+                @click="decrement"
+              >
+                −
+              </ion-button>
+            </ion-col>
+            <ion-col>
+              <ion-button
+                shape="round"
+                color="primary"
+                expand="block"
+                @click="increment"
+              >
+                ＋
+              </ion-button>
+            </ion-col>
+            <ion-col>
+              <ion-button
+                shape="round"
+                color="tertiary"
+                expand="block"
+                @click="promptEncounter"
+              >
+                遭遇
+              </ion-button>
+            </ion-col>
+          </ion-row>
+        </ion-grid>
+      </ion-toolbar>
+    </ion-footer>
   </ion-page>
 </template>
 
@@ -159,29 +201,15 @@ type Period = 'all' | 'month' | 'day'
 const period = ref<Period>('all')
 const showPicker     = ref(false)
 const popoverEvent   = ref<UIEvent>()
-function openPopover(mode: Period, e: UIEvent) {
-  period.value      = mode
-  // 累計はポップオーバーを開かない
-  if (mode === 'all') {
-    showPicker.value = false
-    popoverEvent.value = undefined
-    return
-  }
-  popoverEvent.value = e
-  showPicker.value  = true
-}
-function onPopoverDismiss() {
-  showPicker.value = false
-  popoverEvent.value = undefined
-}
+
 const options: {
   value: Period
   label: string
   icon: any
 }[] = [
   { value: 'all',   label: '累計',   icon: calendarOutline },
-  { value: 'month', label: '月次',   icon: calendarSharp },
-  { value: 'day',   label: '日付別', icon: todaySharp }
+  { value: 'month', label: '月別',   icon: calendarSharp },
+  { value: 'day',   label: '日別', icon: todaySharp }
 ]
 
 // ポップオーバーに渡すクラスを computed で生成
@@ -223,6 +251,27 @@ const yearValues = computed(() => {
   }
   return years
 })
+
+// ボタン切り替えハンドラ（ポップオープンはしない）
+function onPeriodChange(v: Period) {
+  period.value = v
+}
+
+// ラベル横に出すアイコン（options から拾う）
+const currentPeriodIcon = computed(() => {
+  const opt = options.find(o => o.value === period.value)
+  return opt ? opt.icon : calendarOutline
+})
+
+// カレンダーアイコンを押したとき
+function openPopover(e: UIEvent) {
+  popoverEvent.value = e
+  showPicker.value   = true
+}
+function onPopoverDismiss() {
+  showPicker.value   = false
+  popoverEvent.value = undefined
+}
 
 // 月次ピッカーで選択時
 function onMonthPicked(e: CustomEvent) {
@@ -276,15 +325,15 @@ const lastUpdateFormatted = computed(() =>
 
 // テンプレート表示用 metrics 配列 
 const dispMetrics = computed(() => [
-  { label: '周回数',    mdi: 'directions_run',       value: `${pm.value.runs}周` },
-  { label: 'ラック',    icon: sparkles,              value: item.value.encounterCount },
-  { label: '遭遇数',    mdi: 'flag',                 value: pm.value.encounters },
-  { label: '遭遇率',    mdi: 'percent',              value: `${pm.value.encounterRate.toFixed(1)}%` },
-  { label: '最短周回',   icon: trendingDown,         value: pm.value.fastest  !== null ? `${pm.value.fastest}周` : '–' },
-  { label: '最長周回',   icon: trendingUp,           value: pm.value.slowest  !== null ? `${pm.value.slowest}周` : '–' },
-  { label: '平均周回', mdi: 'align_vertical_center', value: pm.value.average !== null ? `${pm.value.average.toFixed(1)}周` : '–' },
-  { label: '総周回数',  mdi: 'history',              value: `${pm.value.totalRuns}周` },
-  { label: 'EX敗北数',   icon: close,                value: pm.value.defeats }
+  { label: '周回数',    mdi: 'directions_run',       unit: '周', value: pm.value.runs },
+  { label: 'ラック',    icon: sparkles,              unit: '',   value: item.value.encounterCount },
+  { label: '遭遇数',    mdi: 'flag',                 unit: '',   value: pm.value.encounters },
+  { label: '遭遇率',    mdi: 'percent',              unit: '%',  value: pm.value.encounterRate.toFixed(2) },
+  { label: '最短周回',   icon: trendingDown,         unit: pm.value.fastest !== null ? '周' : '',  value: pm.value.fastest  ?? '–' },
+  { label: '最長周回',   icon: trendingUp,           unit: pm.value.slowest  !== null ? '周' : '', value: pm.value.slowest  ?? '–' },
+  { label: '平均周回', mdi: 'align_vertical_center', unit: pm.value.average !== null ? '周' : '',  value: pm.value.average?.toFixed(1) ?? '–' },
+  { label: '総周回数',  mdi: 'history',              unit: '周', value: pm.value.totalRuns },
+  { label: 'EX敗北数',   icon: close,                unit: '',   value: pm.value.defeats }
 ])
 
 // ボタンハンドラ
@@ -377,21 +426,51 @@ async function promptEncounter() {
   --padding-end:    0.3rem;
 }
 
+/* 範囲ラベル + カレンダーアイコン */
+.period-header {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: 0.2rem 0;
+  height: 1.8rem;      /* 全体の高さを固定 */
+  line-height: 1.8rem; /* テキストの縦位置を中央に */
+}
+.current-period {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--ion-color-primary);
+}
+
+.calendar-btn {
+  /* カレンダーアイコンボタンをコンパクト化 */
+  --padding-start: 0;
+  --padding-end:   0;
+  --padding-top:   0;
+  --padding-bottom:0;
+  /* 幅・高さを固定 */
+  width: 1.8rem;
+  height: 1.8rem;
+  /* 最小サイズ制約を外し、固定サイズに */
+  --min-width:  0;
+  --min-height: 0;
+  width: 1.6rem;
+  height: 1.6rem;
+  margin-left: 0.3rem; /* ラベルとの間隔 */
+  /* 背景や枠は元のままクリア */
+  --border-radius: 0.2rem;
+}
+/* 中のアイコンも小さく */
+.calendar-btn ::v-deep(ion-icon) {
+  font-size: 1.2rem;
+  line-height: 1.6rem;
+}
+
 /* LastUpdate */
 .last-update {
   font-size: 0.75rem;
   text-align: center;
   color: var(--ion-color-medium);
   margin-bottom: 0.5rem;
-}
-
-.current-period {
-  text-align: center;
-  font-size: 0.9rem;
-  font-weight: 500;
-  margin: 0.4rem 0;
-  min-height: 1.5em;
-  color: var(--ion-color-primary);
 }
 
 /* カードグリッド */
@@ -418,14 +497,21 @@ async function promptEncounter() {
 
 .metric-value {
   display: block;
-  font-size: 1.3rem;
+  font-size: 1.5rem;
   font-weight: bold;
-  margin-top: 0.2rem;
+  margin-top: 0;
+  padding-left: 0.4rem;
+}
+
+.metric-unit {
+  margin-left: 0.2rem;
+  font-size: 0.75em;  /* 数値に対する相対サイズ */
+  color: var(--ion-color-medium); /* 必要なら色も調整 */
 }
 
 /* アイコンと数値フォントサイズを小さく */
 .metric-icon {
-  font-size: 1rem;
+  font-size: 1.4rem;
   vertical-align: middle;
   margin-right: 0.2rem;
   padding-bottom: 0.2rem;
