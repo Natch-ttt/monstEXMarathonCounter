@@ -552,9 +552,15 @@ async function promptEncounter() {
 
 /* カードグリッド */
 .metrics-grid {
-  --ion-grid-column-padding: 0.1rem;  /* 列間 */
+  --ion-grid-column-padding: 0.2rem;  /* 列間 */
   --ion-grid-row-padding:    0.1rem;  /* 行間 */
   margin-bottom: 0.5rem;
+}
+/* モバイル（横幅480px以下）ではさらに小さく */
+@media (max-width: 480px) {
+  .metrics-grid {
+    --ion-grid-column-padding: 0.1rem;
+  }
 }
 
 /* カードをコンパクトに */
