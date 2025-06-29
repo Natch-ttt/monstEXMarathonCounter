@@ -131,19 +131,36 @@
       <ion-toolbar>
         <ion-grid class="button-group">
           <ion-row>
-            <ion-col>
-              <ion-button
-                shape="round"
-                fill="outline"
-                expand="block"
-                @click="decrement"
-                :disabled="pm.runs === 0"
-              >
-                −
-              </ion-button>
+            <!-- 「−」と「リセット」を縦に並べる -->
+            <ion-col size="2">
+              <div class="small-btn-group">
+                <ion-button
+                  size="small"
+                  shape="round"
+                  fill="outline"
+                  expand="block"
+                  @click="decrement"
+                  :disabled="pm.runs === 0"
+                >
+                  −
+                </ion-button>
+                <ion-button
+                  size="small"
+                  shape="round"
+                  fill="outline"
+                  expand="block"
+                  @click="promptReset"
+                  :disabled="pm.runs === 0"
+                >
+                  リセット
+                </ion-button>
+              </div>
             </ion-col>
-            <ion-col>
+
+            <!-- 「＋」ボタン -->
+            <ion-col size="5">
               <ion-button
+                size="large"
                 shape="round"
                 color="primary"
                 expand="block"
@@ -152,8 +169,11 @@
                 ＋
               </ion-button>
             </ion-col>
-            <ion-col>
+
+            <!-- 「遭遇」ボタン -->
+            <ion-col size="5">
               <ion-button
+                size="large"
                 shape="round"
                 color="tertiary"
                 expand="block"
@@ -163,6 +183,7 @@
                 遭遇
               </ion-button>
             </ion-col>
+
           </ion-row>
         </ion-grid>
       </ion-toolbar>
@@ -197,6 +218,12 @@ const item = computed(() => store.getItem(id)!)
 if (!item.value) {
   window.location.href = import.meta.env.BASE_URL
 }
+
+// 現在のカウンター名を取得
+const counterName = computed(() => {
+  const item = store.getItem(id)
+  return item ? item.name : ''
+})
 
 // 画面上の期間ステート
 type Period = 'all' | 'month' | 'day'
@@ -336,6 +363,26 @@ const dispMetrics = computed(() => [
 // ボタンハンドラ
 function increment() { store.incrementRun(id) }
 function decrement() { store.decrementRun(id) }
+
+// リセットボタン押下時
+async function promptReset() {
+  const name = counterName.value
+  const alert = await alertController.create({
+    header: `「${name}」をリセット`,
+    message: '累計・月別・日別の全データが消去されます。本当によろしいですか？',
+    buttons: [
+      { text: 'キャンセル', role: 'cancel' },
+      {
+        text: 'リセット',
+        role: 'destructive',
+        handler: () => {
+          store.resetAll(id) // ストアの全リセット関数を呼ぶ
+        }
+      }
+    ]
+  })
+  await alert.present()
+}
 
 async function promptEncounter() {
   ;(document.activeElement as HTMLElement)?.blur()
@@ -515,8 +562,37 @@ async function promptEncounter() {
 }
 
 /* ボタン群 */
-.button-group {
-  --ion-grid-column-padding: 0.3rem;
-  margin-top: 1.5rem;
+.small-btn-group {
+  /* 小ボタンを縦に並べる */
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
 }
+.small-btn-group ion-button {
+  /* 「−」「リセット」両ボタンの共通調整 */
+  --padding-top:    0.2rem;
+  --padding-bottom: 0.2rem;
+  --padding-start:  0.4rem;
+  --padding-end:    0.4rem;
+  font-size: 0.8rem;
+}
+.button-group {
+  /* フッター内グリッド全体を中央に */
+  max-width: 500px;
+  margin: 0 auto;
+  padding: 0.1rem 1rem;
+}
+.button-group ion-row {
+  /* 行単位でも中央寄せ */
+  display: flex;
+  flex-wrap: nowrap !important; 
+  justify-content: center;
+  align-items: center;
+  gap: 1rem;
+}
+ion-button {
+  /* ボタンの丸みを控えめに */
+  --border-radius: 0.4rem;
+}
+
 </style>

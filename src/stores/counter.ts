@@ -99,6 +99,20 @@ export const useCounterStore = defineStore('counter', () => {
     }
   }
 
+  // 指定アイテムの全データを初期化する
+  function resetAll(id: string) {
+    const item = getItem(id)!
+    // 周回関連
+    item.runCount         = 0
+    item.currentRunCount  = 0
+    item.runLogs          = []
+    // 遭遇・ラック関連
+    item.encounterCount   = 0
+    item.encounterLogs    = []
+    item.recordSuccess    = []
+    item.exDefeats        = 0
+  }
+
   function onEncounter(id: string, num: number) {
     const item = getItem(id)!
     const ts = Date.now()
@@ -214,7 +228,7 @@ export const useCounterStore = defineStore('counter', () => {
 
   return {
     counters, add, remove: (id: string) => counters.value = counters.value.filter(c => c.id !== id),
-    incrementRun, decrementRun, onEncounter,
+    incrementRun, decrementRun, resetAll, onEncounter,
     getItem,
     periodMetrics,
     filterTs
