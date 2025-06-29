@@ -32,6 +32,8 @@
           <ion-button
             v-if="period !== 'all'"
             fill="clear"
+            shape="round"
+            size="small"
             class="calendar-btn"
             @click.stop="openPopover($event)"
           >
@@ -524,6 +526,15 @@ async function promptEncounter() {
   margin-left: 0.3rem; /* ラベルとの間隔 */
   /* 背景や枠は元のままクリア */
   --border-radius: 0.2rem;
+  /* 強調スタイル */
+  --background: var(--ion-color-light);
+  --color:      var(--ion-color-primary);
+  border:       1px solid var(--ion-color-primary);
+  box-shadow:   0 3px 3px rgba(0, 0, 0, 0.15);
+  transition:   background-color 0.2s, box-shadow 0.2s;
+  cursor:       pointer;
+  padding:      0.1rem;
+  margin-left:  0.7rem;
 }
 /* 中のアイコンも小さく */
 .calendar-btn ::v-deep(ion-icon) {
@@ -560,7 +571,20 @@ async function promptEncounter() {
   padding-inline-start:  0.4rem;
   padding-inline-end:    0.4rem;
 }
-
+/* カードメトリクスのタイトル全体に狙い撃ち */
+.metric-card ion-card-title {
+  /* 通常時のサイズ */
+  font-size: 1.2rem;
+  /* アイコンとテキストの行高さを揃える */
+  line-height: 1.2;
+}
+/* モバイル（横幅480px以下）ではさらに小さく */
+@media (max-width: 480px) {
+  .metric-card ion-card-title {
+    font-size: 0.9rem;
+    max-height: 0.8rem;
+  }
+}
 .metric-value {
   display: block;
   font-size: 1.2rem;
@@ -580,7 +604,7 @@ async function promptEncounter() {
   font-size: 1.2rem;
   vertical-align: middle;
   margin-right: 0.2rem;
-  padding-bottom: 0.2rem;
+  padding-bottom: 0.25rem;
 }
 
 /* ボタン群 */
