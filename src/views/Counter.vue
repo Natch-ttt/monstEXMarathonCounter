@@ -8,7 +8,12 @@
         <ion-title>{{ item.name }}</ion-title>
         <!-- ヘッダーボタン群 -->
         <ion-buttons slot="end" class="header-end-button">
-          <ion-button @click="toggleRecordMenu">
+          <!-- オプションボタン -->
+          <ion-button fill="clear" @click="toggleOptionMenu">
+            <ion-icon slot="icon-only" :icon="settingsOutline" />
+          </ion-button>
+          <!-- 遭遇ログボタン -->
+          <ion-button fill="clear" @click="toggleRecordMenu">
             <ion-icon slot="icon-only" :icon="menuOutline" />
           </ion-button>
         </ion-buttons>
@@ -38,6 +43,7 @@
             v-if="period !== 'all'"
             fill="clear"
             size="small"
+            class="calendar-btn"
             @click.stop="openPopover($event)"
           >
             <ion-icon :icon="currentPeriodIcon" />
@@ -211,19 +217,21 @@ import {
 } from '@ionic/vue'
 import type { DatetimeCustomEvent } from '@ionic/vue'
 import {
-  sparkles, close, calendarOutline, calendarSharp, todaySharp, menuOutline
+  sparkles, close, calendarOutline, calendarSharp, todaySharp, menuOutline, settingsOutline
 } from 'ionicons/icons'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 import type { IconDefinition } from '@fortawesome/fontawesome-svg-core'
 import {
   faPersonRunning, faPercent, faClockRotateLeft, faEraser
 } from '@fortawesome/free-solid-svg-icons'
+import { useMenuStore } from '@/stores/menu'
 import { useCounterStore } from '@/stores/counter'
 // ルート／ストア
 const route = useRoute()
 const router = useRouter()
 const id    = computed(() => route.params.id as string)
 const store = useCounterStore()
+const menu = useMenuStore()
 
 const today = new Date()
 
@@ -278,9 +286,14 @@ const currentPeriodIcon = computed(() => {
   return opt?.icon ?? calendarOutline
 })
 
-// サイドメニューのトグル
+// オプションサイドメニューのトグル
+async function toggleOptionMenu() {
+  await menu.openOptionMenu()
+}
+
+// 遭遇サイドメニューのトグル
 async function toggleRecordMenu() {
-  await menuController.toggle('recordMenu')
+  await menu.openLogsMenu()
 }
 
 // 指標用にストア periodMetrics を呼び出す
