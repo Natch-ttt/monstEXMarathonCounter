@@ -1,11 +1,17 @@
 <template>
-  <ion-page>
+  <ion-page v-if="item">
     <ion-header translucent>
       <ion-toolbar>
         <ion-buttons slot="start">
           <ion-back-button default-href="/" />
         </ion-buttons>
         <ion-title>{{ item.name }}</ion-title>
+        <!-- ヘッダーボタン群 -->
+        <ion-buttons slot="end" class="header-end-button">
+          <ion-button @click="toggleRecordMenu">
+            <ion-icon slot="icon-only" :icon="menuOutline" />
+          </ion-button>
+        </ion-buttons>
       </ion-toolbar>
     </ion-header>
 
@@ -28,16 +34,13 @@
         <!-- 範囲ラベル ＋ カレンダーアイコン -->
         <div class="period-header">
           <p class="current-period">{{ currentPeriodLabel }}</p>
-          <!-- periodがall以外のときだけ表示 -->
           <ion-button
             v-if="period !== 'all'"
             fill="clear"
-            shape="round"
             size="small"
-            class="calendar-btn"
             @click.stop="openPopover($event)"
           >
-            <ion-icon slot="icon-only" :icon="currentPeriodIcon" />
+            <ion-icon :icon="currentPeriodIcon" />
           </ion-button>
         </div>
 
@@ -68,10 +71,11 @@
           </ion-header>
           <!-- カレンダー本体 -->
           <ion-content class="popover-content">
+            <!-- 月モード -->
             <ion-datetime
               v-if="period === 'month'"
               presentation="month-year"
-              :value="selectedMonth"
+              v-model="pickerMonth"
               display-format="YYYY/MM"
               picker-format="YYYY MMMM"
               :year-values="yearValues"
@@ -79,10 +83,11 @@
               :max="maxMonth"
               @ionChange="onMonthPicked"
             />
+            <!-- 日モード -->
             <ion-datetime
               v-else
               presentation="date"
-              :value="selectedDay"
+              v-model="pickerDay"
               display-format="YYYY/MM/DD"
               picker-format="YYYY MMMM DD"
               :year-values="yearValues"
@@ -155,7 +160,6 @@
                   fill="outline"
                   expand="block"
                   @click="promptReset"
-                  :disabled="pm.runs === 0"
                 >
                   <font-awesome-icon :icon="faEraser" />
                 </ion-button>
@@ -198,15 +202,16 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import {
   IonPage, IonHeader, IonToolbar, IonTitle, IonButton, IonButtons, IonBackButton,
   IonContent, IonGrid, IonRow, IonCol, IonDatetime, IonIcon,
   IonCard, IonCardHeader, IonCardTitle, IonCardContent,
-  alertController
+  menuController, alertController, onIonViewWillEnter,
 } from '@ionic/vue'
+import type { DatetimeCustomEvent } from '@ionic/vue'
 import {
-  sparkles, close, calendarOutline, calendarSharp, todaySharp
+  sparkles, close, calendarOutline, calendarSharp, todaySharp, menuOutline
 } from 'ionicons/icons'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 import type { IconDefinition } from '@fortawesome/fontawesome-svg-core'
@@ -216,38 +221,30 @@ import {
 import { useCounterStore } from '@/stores/counter'
 // ルート／ストア
 const route = useRoute()
-const id = route.params.id as string
+const router = useRouter()
+const id    = computed(() => route.params.id as string)
 const store = useCounterStore()
 
 const today = new Date()
 
 // CounterItem の取得
-const item = computed(() => store.getItem(id)!)
-if (!item.value) {
-  window.location.href = import.meta.env.BASE_URL
-}
+const item = computed(() => store.getItem(id.value)!)
 
-// 現在のカウンター名を取得
-const counterName = computed(() => {
-  const item = store.getItem(id)
-  return item ? item.name : ''
-})
-
-// 画面上の期間ステート
+// 期間モード／選択キーは store 参照
+const period        = computed(() => store.period)
+const selectedMonth = computed(() => store.selectedMonth)
+const selectedDay   = computed(() => store.selectedDay)
 type Period = 'all' | 'month' | 'day'
-const period = ref<Period>('all')
-const showPicker     = ref(false)
-const popoverEvent   = ref<UIEvent>()
 
-const options: {
-  value: Period
-  label: string
-  icon: any
-}[] = [
-  { value: 'all',   label: '累計',   icon: calendarOutline },
-  { value: 'month', label: '月別',   icon: calendarSharp },
+// カウンター名
+const counterName = computed(() => item.value?.name ?? '')
+
+// セグメント用オプション
+const options = [
+  { value: 'all',   label: '累計', icon: calendarOutline },
+  { value: 'month', label: '月別', icon: calendarSharp },
   { value: 'day',   label: '日別', icon: todaySharp }
-]
+] as const
 
 // ポップオーバーに渡すクラスを computed で生成
 const popoverClasses = computed<string[]>(() => {
@@ -259,88 +256,148 @@ const popoverClasses = computed<string[]>(() => {
   return []
 })
 
-// 月次：YYYY-MM 文字列生成
-const thisMonth = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}`
-const selectedMonth = ref(thisMonth)
-
-// 日次：YYYY-MM-DD 文字列生成
-const todayStr = [
-  today.getFullYear(),
-  String(today.getMonth()+1).padStart(2,'0'),
-  String(today.getDate()).padStart(2,'0')
-].join('-')
-const selectedDay = ref(todayStr)
-
-// min/max も同様に文字列生成
-const startYear = 2000
-const minMonth = `${startYear}-01`
-const maxMonth = thisMonth
-
-const minDay = `${startYear}-01-01`
-const maxDay = todayStr
-
-// yearValues 配列を computed で生成
-const currentYear = today.getFullYear()
-const yearValues = computed(() => {
-  const years: number[] = []
-  for (let y = startYear; y <= currentYear; y++) {
-    years.push(y)
-  }
-  return years
-})
-
-// ボタン切り替えハンドラ（ポップオープンはしない）
+// 期間切替
 function onPeriodChange(v: Period) {
-  period.value = v
+  store.setPeriod(v)
 }
 
-// ラベル横に出すアイコン（options から拾う）
-const currentPeriodIcon = computed(() => {
-  const opt = options.find(o => o.value === period.value)
-  return opt ? opt.icon : calendarOutline
-})
-
-// カレンダーアイコンを押したとき
-function openPopover(e: UIEvent) {
-  popoverEvent.value = e
-  showPicker.value   = true
-}
-function onPopoverDismiss() {
-  showPicker.value   = false
-  popoverEvent.value = undefined
-}
-
-// 月次ピッカーで選択時
-function onMonthPicked(e: CustomEvent) {
-  selectedMonth.value = e.detail.value
-}
-// 日付ピッカーで選択時
-function onDayPicked(e: CustomEvent) {
-  selectedDay.value = e.detail.value
-}
-
-// 画面上で選択中の「年月／日付」を人に読みやすく整形
+// 月別/日別の時刻ラベルを整形
 const currentPeriodLabel = computed(() => {
-  if (period.value === 'all') {
-    return ''
-  }
+  if (period.value === 'all') return ''
   if (period.value === 'month') {
-    // selectedMonth は "YYYY-MM"
     const [y, m] = selectedMonth.value.split('-')
     return `${y}年${m}月`
   }
-  // day モード
   const [yy, mm, dd] = selectedDay.value.split('-')
   return `${yy}年${mm}月${dd}日`
 })
 
-// `periodMetrics` で取得した生データ
-const pm = computed(() =>
-  store.periodMetrics(id, period.value, period.value!=='all'
-    ? (period.value==='month' ? selectedMonth.value : selectedDay.value)
-    : undefined
-  )
-)
+// カレンダーアイコン
+const currentPeriodIcon = computed(() => {
+  const opt = options.find(o => o.value === period.value)
+  return opt?.icon ?? calendarOutline
+})
+
+// サイドメニューのトグル
+async function toggleRecordMenu() {
+  await menuController.toggle('recordMenu')
+}
+
+// 指標用にストア periodMetrics を呼び出す
+const pm = computed(() => store.periodMetrics(
+  id.value,
+  period.value,
+  period.value === 'month'
+    ? selectedMonth.value
+    : period.value === 'day'
+      ? selectedDay.value
+      : undefined
+))
+
+// ——— カレンダーPopOver ———
+const showPicker    = ref(false)
+const popoverEvent = ref<UIEvent>()
+
+// ローカル v-model 用
+const pickerMonth   = ref<string>('')
+const pickerDay     = ref<string>('')
+
+// 比較用 old 値を覚えておく
+let baseOldMonth = ''
+let baseOldDay   = ''
+let MAX_MONTH = ''
+
+const startYear = 2000
+const yearValues = computed(() => {
+  const yy: number[] = []
+  for (let y = startYear; y <= today.getFullYear(); y++) yy.push(y)
+  return yy
+})
+const minMonth = `${startYear}-01`
+const maxMonth = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}`
+const minDay   = `${startYear}-01-01`
+const maxDay   = [
+  today.getFullYear(),
+  String(today.getMonth()+1).padStart(2,'0'),
+  String(today.getDate()).padStart(2,'0')
+].join('-')
+
+function openPopover(e: UIEvent) {
+  popoverEvent.value = e
+
+  // popover を開く直前に old／初期値をセット
+  MAX_MONTH = maxMonth.split('-')[1]
+
+  baseOldMonth      = store.selectedMonth
+  pickerMonth.value = store.selectedMonth
+
+  baseOldDay        = store.selectedDay
+  pickerDay.value   = store.selectedDay
+
+  showPicker.value   = true
+}
+function closePopover() {
+  showPicker.value = false
+}
+// 月別カレンダー変更時
+function onMonthPicked(e: DatetimeCustomEvent) {
+  const v = e.detail.value
+  if (typeof v !== 'string') return
+
+  // 1) ローカル state に反映（UI 更新用）
+  pickerMonth.value = v
+
+  // 2) new／old の月部分を比較
+  const [oldY, oldM] = baseOldMonth.split('-')
+  const [newY, newM] = v.split('-')
+
+  // 3) store にコミット && 初期値の再セット
+  store.setSelectedMonth(v)
+
+  // 4) 月が変わっていれば popover を閉じる
+  if (oldY === newY && oldM !== newM) {
+    closePopover()
+  } else if (oldY !== newY && oldM !== newM && oldM > MAX_MONTH) {
+    MAX_MONTH = '12'
+  } else if (oldY !== newY && oldM !== newM ) {
+    closePopover()
+  }
+}
+// 日別カレンダー変更時
+function onDayPicked(e: DatetimeCustomEvent) {
+  const v = e.detail.value
+  if (typeof v !== 'string') return
+
+  // 1) ローカル state に反映（UI 更新用）
+  pickerDay.value = v
+
+  // 2) new／old の月部分を比較
+  const [oldY, oldM, oldD] = baseOldDay.split('-')
+  const [newY, newM, newD] = v.split('-')
+
+  // 3) store にコミット && 初期値の再セット
+  store.setSelectedDay(v)
+  baseOldDay = store.selectedDay
+
+  // 4) 日にちだけが変わっていれば popover を閉じる
+  if (oldY === newY && oldM === newM && oldD !== newD) {
+    closePopover()
+  }
+}
+// Popover 全体の did-dismiss でもクローズを拾う
+function onPopoverDismiss() {
+  showPicker.value = false
+}
+
+// ページ表示・復帰時は累計モードにリセット
+onIonViewWillEnter(() => {
+  store.setPeriod('all')
+
+  if (!item.value) {
+    // まだレンダリング前の段階なら即時置き換え
+    router.replace({ path: '/' })
+  }
+})
 
 // 最終更新時刻をフォーマット
 const lastUpdate = computed(() => new Date(pm.value.lastTs))
@@ -377,16 +434,16 @@ const dispMetrics = computed<Metric[]>(() => [
   { label: 'ラック',   ion: sparkles,                unit: '',   value: item.value.encounterCount },
   { label: '遭遇数',   mdi: 'flag',                  unit: '',   value: pm.value.encounters },
   { label: '遭遇率',   fai: faPercent,               unit: '%',  value: pm.value.encounterRate.toFixed(2) },
-  { label: '最短周回', mdi: 'trending_down',            unit: pm.value.fastest !== null ? '周' : '',  value: pm.value.fastest  ?? '–' },
-  { label: '最長周回', mdi: 'trending_up',              unit: pm.value.slowest  !== null ? '周' : '', value: pm.value.slowest  ?? '–' },
+  { label: '最短周回', mdi: 'trending_down',         unit: pm.value.fastest !== null ? '周' : '',  value: pm.value.fastest  ?? '–' },
+  { label: '最長周回', mdi: 'trending_up',           unit: pm.value.slowest  !== null ? '周' : '', value: pm.value.slowest  ?? '–' },
   { label: '平均周回', mdi: 'align_vertical_center', unit: pm.value.average !== null ? '周' : '',  value: pm.value.average?.toFixed(1) ?? '–' },
-  { label: '総周回数', fai: faClockRotateLeft,               unit: '周', value: pm.value.totalRuns },
+  { label: '総周回数', fai: faClockRotateLeft,       unit: '周', value: pm.value.totalRuns },
   { label: 'EX敗北数', ion: close,                   unit: '',   value: pm.value.defeats }
 ])
 
 // ボタンハンドラ
-function increment() { store.incrementRun(id) }
-function decrement() { store.decrementRun(id) }
+function increment() { store.incrementRun(id.value) }
+function decrement() { store.decrementRun(id.value) }
 
 // リセットボタン押下時
 async function promptReset() {
@@ -400,7 +457,7 @@ async function promptReset() {
         text: 'リセット',
         role: 'destructive',
         handler: () => {
-          store.resetAll(id) // ストアの全リセット関数を呼ぶ
+          store.resetAll(id.value) // ストアの全リセット関数を呼ぶ
         }
       }
     ]
@@ -408,6 +465,7 @@ async function promptReset() {
   await alert.present()
 }
 
+/* 遭遇イベントポップアップ */
 async function promptEncounter() {
   ;(document.activeElement as HTMLElement)?.blur()
   const alert = await alertController.create({
@@ -419,16 +477,21 @@ async function promptEncounter() {
         text: '確定',
         handler: data => {
           const n = parseInt(data.num, 10)
-          store.onEncounter(id, isNaN(n) ? 0 : n)
+          store.onEncounter(id.value, isNaN(n) ? 0 : n)
         }
       }
     ]
   })
   await alert.present()
 }
+
 </script>
 
 <style scoped>
+.header-end-button{
+  margin-right: 1rem;
+}
+
 /* 中央寄せ＋幅制限をやや狭く */
 .content-wrapper {
   max-width: 480px;
@@ -535,8 +598,9 @@ async function promptEncounter() {
   cursor:       pointer;
   padding:      0.1rem;
   margin-left:  0.7rem;
+  border-radius: 0.2rem;
 }
-/* 中のアイコンも小さく */
+/* 中のアイコンを小さく */
 .calendar-btn ::v-deep(ion-icon) {
   font-size: 1.2rem;
   line-height: 1.6rem;
@@ -577,7 +641,7 @@ async function promptEncounter() {
   padding-inline-start:  0.4rem;
   padding-inline-end:    0.4rem;
 }
-/* カードメトリクスのタイトル全体に狙い撃ち */
+/* カードメトリクスのタイトル全体 */
 .metric-card ion-card-title {
   /* 通常時のサイズ */
   font-size: 1.2rem;
@@ -601,8 +665,8 @@ async function promptEncounter() {
 
 .metric-unit {
   margin-left: 0.2rem;
-  font-size: 0.75em;  /* 数値に対する相対サイズ */
-  color: var(--ion-color-medium); /* 必要なら色も調整 */
+  font-size: 0.75em;
+  color: var(--ion-color-medium);
 }
 
 /* アイコンと数値フォントサイズを小さく */
