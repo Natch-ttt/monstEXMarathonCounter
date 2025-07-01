@@ -13,8 +13,8 @@
 
     <ion-content class="ion-padding">
 
-      <ion-list v-if="store.counters.length">
-        <template v-for="item in store.counters" :key="item.id">
+      <ion-list v-if="counterStore.counters.length">
+        <template v-for="item in counterStore.counters" :key="item.id">
           <!-- ネイティブならスワイプ削除 -->
           <ion-item-sliding v-if="isNative">
             <ion-item button detail @click="goCounter(item.id)">
@@ -70,6 +70,7 @@
 </template>
 
 <script setup lang="ts">
+import { ref, computed, onMounted } from 'vue'
 import {
   IonPage, IonHeader, IonToolbar, IonTitle, IonIcon,
   IonContent, IonButton, IonButtons, IonItemSliding, 
@@ -78,23 +79,30 @@ import {
 } from '@ionic/vue'
 import { addOutline, trashOutline, warningOutline } from 'ionicons/icons'
 import { useCounterStore } from '@/stores/counter'
-import { useRouter } from 'vue-router'
+import { useSettingsStore } from '@/stores/settings'
+import { useRoute, useRouter } from 'vue-router'
 import { blurActive } from '@/utils/focusUtils'
 import CounterItemLabel from '@/components/CounterItemLabel.vue'
 
+const route = useRoute()
 const router = useRouter()
-const store = useCounterStore()
+const counterStore  = useCounterStore()
+const settingsStore = useSettingsStore()
 
 // ネイティブかハイブリッドか判定
 const isNative = isPlatform('capacitor') || isPlatform('cordova')
 
-function goCounter(id: string) {
+async function goCounter(id: string) {
+  // settingsStore に currentId をセット
+  settingsStore.setCurrentId(id)
+
+  // CounterView または OptionMenuView に遷移
   router.push({ name: 'Counter', params: { id } })
 }
 
 // デフォルト名を算出
 function getDefaultName() {
-  const idx = store.counters.length + 1
+  const idx = counterStore.counters.length + 1
   // 3 桁ゼロ埋め
   return `データ${String(idx).padStart(3, '0')}`
 }
@@ -127,7 +135,7 @@ async function onAdd() {
             theAlert.message = '※ 名前を入力してください'
             return false
           }
-          store.add(n)
+          counterStore.add(n)
         }
       }
     ]
@@ -146,7 +154,12 @@ async function confirmRemove(id: string, name: string) {
       {
         text: '削除',
         role: 'destructive',
-        handler: () => store.remove(id)
+        handler: () => {
+          // カウンター本体を削除
+          counterStore.remove(id)
+          // オプション設定も削除
+          settingsStore.removeSettings(id)
+        }
       }
     ]
   })

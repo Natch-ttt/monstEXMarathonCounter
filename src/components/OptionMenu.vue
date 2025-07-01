@@ -1,105 +1,157 @@
 <template>
   <ion-header>
     <ion-toolbar>
-      <ion-title>オプション設定</ion-title>
+      <ion-title>設定の変更</ion-title>
     </ion-toolbar>
   </ion-header>
-  <ion-content>
-    <ion-list>
-      <!-- メトリクス表示切替 -->
-      <ion-item v-for="m in metricsMeta" :key="m.showKey">
-      <ion-label>{{ m.label }}</ion-label>
-      <!-- flagModels[m.showKey] は LHS として使える -->
-      <ion-toggle v-model="flagModels[m.showKey]" />
-      </ion-item>
 
-      <!-- 背景色ピッカー -->
-      <ion-item v-for="m in metricsMeta" :key="m.bgKey">
-      <ion-label>{{ m.label }} 背景色</ion-label>
-      <input type="color" v-model="bgModels[m.bgKey]" />
-      </ion-item>
-
-      <!-- 禁忌EXモード -->
+  <ion-content class="ion-padding">
+    <pre style="background:#f0f0f0; padding:8px; font-size:0.8em;">
+      {{ JSON.stringify(store.settingsById, null, 2) }}
+    </pre>
+    <!-- モード設定 -->
+    <ion-list v-if="settings">
+      <ion-list-header>モード設定</ion-list-header>
       <ion-item>
         <ion-label>禁忌EXモード</ion-label>
-        <ion-toggle v-model="settings.tabooEX" />
+        <SwitchToggle v-model="settings.tabooEX" />
       </ion-item>
+    </ion-list>
 
-      <!-- 禁忌EX追加設定 -->
+    <!-- 表示設定 -->
+    <ion-list v-if="settings">
+      <ion-list-header>表示設定</ion-list-header>
       <ion-item
-        v-for="m in tabooMeta"
-        :key="m.key"
-        v-if="settings.tabooEX"
+        v-for="m in metricsMeta"
+        :key="m.label"
+        class="display-item"
       >
-        <ion-label>{{ m.label }}</ion-label>
-        <ion-toggle
-          :label="m.label"
-          v-model="flagModels[m.showKey]"
-        />
-      </ion-item>
-      <ion-item
-        v-for="m in tabooMeta"
-        :key="m.key+'Bg'"
-        v-if="settings.tabooEX"
-      >
-        <ion-label>{{ m.label }} 背景色</ion-label>
+        <ion-label class="item-label">{{ m.label }}</ion-label>
         <input
           type="color"
-          v-model="bgModels[m.bgKey]"
+          v-model="m.bgRef.value"
+          class="color-picker"
         />
+        <SwitchToggle v-model="m.showRef.value" />
+      </ion-item>
+    </ion-list>
+
+    <!-- EX追加設定 -->
+    <ion-list v-if="settings && settings.tabooEX">
+      <!-- <ion-list-header>EX追加表示</ion-list-header> -->
+      <ion-item
+        v-for="m in tabooMeta"
+        :key="m.label"
+        class="display-item"
+      >
+        <ion-label class="item-label">{{ m.label }}</ion-label>
+        <input
+          type="color"
+          v-model="m.bgRef.value"
+          class="color-picker"
+        />
+        <SwitchToggle v-model="m.showRef.value" />
       </ion-item>
     </ion-list>
   </ion-content>
 </template>
 
 <script setup lang="ts">
-import { reactive, computed } from 'vue'
-import { storeToRefs } from 'pinia'
-import { menuController } from '@ionic/vue'
+import { watch, computed } from 'vue'
+import { useRoute }       from 'vue-router'
 import { useSettingsStore } from '@/stores/settings'
+import SwitchToggle       from '@/components/SwitchToggle.vue'
 
-// store の ref 化
-const settings = useSettingsStore()
-const refs = storeToRefs(settings) as any
+// ストア & ルート取得
+const store = useSettingsStore()
+const route = useRoute()
+const settings = computed(() => store.current)
 
-// 基本メトリクスに対応する設定キー群
-const metricsMeta = [
-  { key:'runs',      label:'周回数',         showKey:'showRuns',      bgKey:'bgRuns' },
-  { key:'encounters',label:'遭遇数',         showKey:'showEncounters',bgKey:'bgEncounters' },
-  { key:'rate',      label:'遭遇率',         showKey:'showRate',      bgKey:'bgRate' },
-  { key:'fastest',   label:'最短周回',       showKey:'showFastest',   bgKey:'bgFastest' },
-  { key:'slowest',   label:'最長周回',       showKey:'showSlowest',   bgKey:'bgSlowest' },
-  { key:'average',   label:'平均周回',       showKey:'showAverage',   bgKey:'bgAverage' },
-  { key:'totalRuns', label:'総周回数',       showKey:'showTotal',     bgKey:'bgTotal' },
-  { key:'defeats',   label:'EX敗北数',       showKey:'showDefeats',   bgKey:'bgDefeats' },
-]
-
-// 禁忌EX用メトリクス
-const tabooMeta = [
-  { key:'treasureCount', label:'至宝発動数',   showKey:'showTreasureCount', bgKey:'bgTreasureCount' },
-  { key:'treasureRate',  label:'至宝発動率',   showKey:'showTreasureRate',  bgKey:'bgTreasureRate' },
-  { key:'luckyRizaCount',label:'ラキリザ数',   showKey:'showLuckyRizaCount',bgKey:'bgLuckyRizaCount' },
-  { key:'luckyRizaRate', label:'ラキリザ発生率',showKey:'showLuckyRizaRate', bgKey:'bgLuckyRizaRate' },
-]
-
-// Models を reactive で生成
-const flagModels = reactive(
-  Object.fromEntries(
-    metricsMeta.map(m => [ 
-      m.showKey, 
-      // storeToRefs で得た refs[showKey] をそのまま使う (as any でキャスト OK)
-      (refs[m.showKey] as unknown as { value: boolean })
-    ])
-  ) as Record<typeof metricsMeta[number]['showKey'], { value: boolean }>
+// ルートの :id が変わったら currentId を更新
+watch(
+  () => route.params.id,
+  id => {
+    if (typeof id === 'string') {
+      store.setCurrentId(id)
+    }
+  },
+  { immediate: true }
 )
 
-const bgModels = reactive(
-  Object.fromEntries(
-    metricsMeta.map(m => [ 
-      m.bgKey, 
-      (refs[m.bgKey] as unknown as { value: string })
-    ])
-  ) as Record<typeof metricsMeta[number]['bgKey'], { value: string }>
-)
+// raw 定義：ラベルとストアのキー
+type MetaRaw = {
+  label: string
+  key: keyof typeof settings.value
+  bgKey: keyof typeof settings.value
+}
 
+const rawMetrics = [
+  { label: '周回数',       key: 'showRuns',       bgKey: 'bgRuns'       },
+  { label: '遭遇数',       key: 'showEncounters', bgKey: 'bgEncounters' },
+  { label: '遭遇率',       key: 'showRate',       bgKey: 'bgRate'       },
+  { label: '最短周回',     key: 'showFastest',    bgKey: 'bgFastest'    },
+  { label: '最長周回',     key: 'showSlowest',    bgKey: 'bgSlowest'    },
+  { label: '平均周回',     key: 'showAverage',    bgKey: 'bgAverage'    },
+  { label: '総周回数',     key: 'showTotal',      bgKey: 'bgTotal'      },
+  { label: 'EX敗北数',     key: 'showDefeats',    bgKey: 'bgDefeats'    },
+] as const satisfies readonly MetaRaw[]
+
+const rawTaboo = [
+  { label: '至宝発動数',    key: 'showTreasureCount', bgKey: 'bgTreasureCount' },
+  { label: '至宝発動率',    key: 'showTreasureRate',  bgKey: 'bgTreasureRate'  },
+  { label: 'ラキリザ数',    key: 'showLuckyRizaCount', bgKey: 'bgLuckyRizaCount' },
+  { label: 'ラキリザ発生率', key: 'showLuckyRizaRate',  bgKey: 'bgLuckyRizaRate'  },
+] as const satisfies readonly MetaRaw[]
+
+// 双方向に書き込める Ref を作成
+const metricsMeta = rawMetrics.map(m => ({
+  label: m.label,
+  showRef: computed<boolean>({
+    get: () => settings.value[m.key],
+    set: v => store.updateCurrent(m.key, v)
+  }),
+  bgRef: computed<string>({
+    get: () => settings.value[m.bgKey],
+    set: v => store.updateCurrent(m.bgKey, v)
+  })
+}))
+
+const tabooMeta = rawTaboo.map(m => ({
+  label: m.label,
+  showRef: computed<boolean>({
+    get: () => settings.value[m.key],
+    set: v => store.updateCurrent(m.key, v)
+  }),
+  bgRef: computed<string>({
+    get: () => settings.value[m.bgKey],
+    set: v => store.updateCurrent(m.bgKey, v)
+  })
+}))
+
+// デバッグ用：settingsById 全体を文字列化して表示
+const debugSettings = computed(() =>
+  JSON.stringify(store.settingsById, null, 2)
+)
 </script>
+
+<style scoped>
+.display-item {
+  display: flex;
+  align-items: center;
+  --inner-padding-start: 0;
+  --inner-padding-end: 0;
+}
+.item-label {
+  flex: 1;
+  white-space: nowrap;
+  font-weight: 500;
+}
+.color-picker {
+  width: 1.8rem;
+  height: 1.8rem;
+  margin: 0 1rem;
+  padding: 0;
+  border: none;
+  background: none;
+}
+</style>

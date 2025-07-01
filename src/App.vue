@@ -11,13 +11,14 @@
 
 <script setup lang="ts">
 import {
-  IonApp, IonMenu, IonRouterOutlet, IonContent
+  IonApp, IonMenu, IonRouterOutlet
 } from '@ionic/vue'
 import { useMenuStore } from '@/stores/menu'
 import EncounterLogMenu from '@/components/EncounterLogMenu.vue'
 import OptionMenu       from '@/components/OptionMenu.vue'
 
 const menu = useMenuStore()
+
 </script>
 
 <style>

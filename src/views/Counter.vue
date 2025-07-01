@@ -207,7 +207,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   IonPage, IonHeader, IonToolbar, IonTitle, IonButton, IonButtons, IonBackButton,
@@ -237,6 +237,20 @@ const today = new Date()
 
 // CounterItem の取得
 const item = computed(() => store.getItem(id.value)!)
+
+onMounted(async () => {
+  try {
+    if (!item.value) {
+      // 取得できなかった場合
+      throw new Error('Counter data not found');
+    }
+  }
+  catch (err) {
+    console.error('Counterページ初期化失敗:', err);
+    // Home にリプレース（履歴に残さない）
+    router.replace({ name: 'Home' });
+  }
+});
 
 // 期間モード／選択キーは store 参照
 const period        = computed(() => store.period)
