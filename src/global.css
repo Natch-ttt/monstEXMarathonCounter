@@ -14,3 +14,10 @@ ion-popover.compact-popover.wide-popover {
   --width: 340px;
   --height: auto;
 }
+
+.alert-sub-title.sc-ion-alert-md {
+  font-size: 1rem;
+  margin-top: 0.5rem;
+  margin-bottom: 0;
+  color:      var(--ion-color-medium);  /* グレー系の変数色 */
+}

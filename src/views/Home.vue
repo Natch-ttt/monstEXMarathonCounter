@@ -11,60 +11,74 @@
       </ion-toolbar>
     </ion-header>
 
-    <ion-content class="ion-padding">
+    <ion-content fullscreen class="ion-padding">
+      <div class="content-wrapper">
+        <ion-list v-if="counterStore.counters.length">
+          <template v-for="item in counterStore.counters" :key="item.id">
+            <!-- ネイティブならスワイプ削除 -->
+            <ion-item-sliding v-if="isNative">
+              <ion-item button detail @click="goCounter(item.id)">
+                <!-- ラベル表示をコンポーネント化 -->
+                <CounterItemLabel :item="item" />
+              </ion-item>
+              <ion-item-options side="end">
+                <!-- 編集ボタン -->
+                <ion-item-option
+                  color="light"
+                  @click="editTitle(item)"
+                >
+                  <ion-icon slot="icon-only" :icon="pencil" />
+                </ion-item-option>
+                <!-- 削除ボタン -->
+                <ion-item-option
+                  color="danger"
+                  @click="confirmRemove(item.id, item.name)"
+                >
+                  <ion-icon slot="icon-only" :icon="trashOutline" />
+                </ion-item-option>
+              </ion-item-options>
+            </ion-item-sliding>
 
-      <ion-list v-if="counterStore.counters.length">
-        <template v-for="item in counterStore.counters" :key="item.id">
-          <!-- ネイティブならスワイプ削除 -->
-          <ion-item-sliding v-if="isNative">
-            <ion-item button detail @click="goCounter(item.id)">
-              <CounterItemLabel
-                :name="item.name"
-                :count="item.runCount"
-              />
-            </ion-item>
-            <ion-item-options side="end">
-              <ion-item-option
-                color="danger"
-                @click="confirmRemove(item.id, item.name)"
+            <!-- Webなら横並び -->
+            <div v-else class="item-wrapper">
+              <ion-item
+                class="flex-item"
+                button
+                detail
+                @click="goCounter(item.id)"
+              >
+                <!-- ラベル表示をコンポーネント化 -->
+                <CounterItemLabel :item="item" />
+              </ion-item>
+              <!-- 編集ボタン -->
+              <ion-button
+                class="edit-button"
+                fill="clear"
+                @click="editTitle(item)"
+              >
+                <ion-icon slot="icon-only" :icon="pencil" />
+              </ion-button>
+
+              <!-- 削除ボタン -->
+              <ion-button
+                class="delete-button"
+                fill="clear"
+                @click.stop.prevent="confirmRemove(item.id, item.name)"
               >
                 <ion-icon slot="icon-only" :icon="trashOutline" />
-              </ion-item-option>
-            </ion-item-options>
-          </ion-item-sliding>
+              </ion-button>
+            </div>
+          </template>
+        </ion-list>
 
-          <!-- Webなら横並び -->
-          <div v-else class="item-wrapper">
-            <ion-item
-              class="flex-item"
-              button
-              detail
-              @click="goCounter(item.id)"
-            >
-              <CounterItemLabel
-                :name="item.name"
-                :count="item.runCount"
-              />
-            </ion-item>
-            <ion-button
-              class="delete-button"
-              fill="clear"
-              @click.stop.prevent="confirmRemove(item.id, item.name)"
-            >
-              <ion-icon slot="icon-only" :icon="trashOutline" />
-            </ion-button>
-          </div>
-        </template>
-      </ion-list>
-
-      <div v-else class="empty-state">
-        <ion-icon :icon="warningOutline" size="large" />
-        <p>
-          カウンターがありません<br />
-          「＋」をタップして新規作成してください
-        </p>
+        <div v-else class="empty-state">
+          <ion-icon :icon="warningOutline" size="large" />
+          <p>
+            カウンターがありません<br />
+            「＋」をタップして新規作成してください
+          </p>
+        </div>
       </div>
-
     </ion-content>
   </ion-page>
 </template>
@@ -77,7 +91,7 @@ import {
   IonList, IonItem, IonItemOption, IonItemOptions,
   alertController, isPlatform, onIonViewWillLeave
 } from '@ionic/vue'
-import { addOutline, trashOutline, warningOutline } from 'ionicons/icons'
+import { addOutline, trashOutline, warningOutline, pencil } from 'ionicons/icons'
 import { useCounterStore } from '@/stores/counter'
 import { useSettingsStore } from '@/stores/settings'
 import { useRoute, useRouter } from 'vue-router'
@@ -91,6 +105,7 @@ const settingsStore = useSettingsStore()
 
 // ネイティブかハイブリッドか判定
 const isNative = isPlatform('capacitor') || isPlatform('cordova')
+// const isNative = true
 
 async function goCounter(id: string) {
   // settingsStore に currentId をセット
@@ -143,6 +158,34 @@ async function onAdd() {
   await theAlert.present()
 }
 
+// タイトル編集ダイアログ
+async function editTitle(item: { id: string; name: string }) {
+  const alert = await alertController.create({
+    header: 'カウンター名を編集',
+    inputs: [
+      {
+        name: 'name',
+        type: 'text',
+        value: item.name,
+        placeholder: '新しい名前'
+      }
+    ],
+    buttons: [
+      { text: 'キャンセル', role: 'cancel' },
+      {
+        text: '保存',
+        handler: (data: any) => {
+          const n = data.name?.trim()
+          if (n) {
+            counterStore.updateName(item.id, n)
+          }
+        }
+      }
+    ]
+  })
+  await alert.present()
+}
+
 // 項目削除
 async function confirmRemove(id: string, name: string) {
   blurActive()
@@ -173,6 +216,12 @@ onIonViewWillLeave(() => {
 </script>
 
 <style scoped>
+/* 中央寄せ＋幅制限をやや狭く */
+.content-wrapper {
+  max-width: 600px;
+  margin: 0 auto 2rem;
+}
+
 .empty-state {
   text-align: center;
   color: var(--ion-color-medium);
@@ -195,13 +244,19 @@ onIonViewWillLeave(() => {
 .flex-item {
   flex: 1;
 }
-
+/* 編集ボタン */
+.edit-button {
+  /* 余白 */
+  margin-left: 0.5rem;
+  /* アイコンを少し強調 */
+  --color: #015796;
+}
 /* 削除ボタン */
 .delete-button {
   /* 余白 */
   margin-left: 0.5rem;
   /* アイコンを少し強調 */
-  --color: var(--ion-color-medium-tint);
+  --color: #ad000d;
 }
 
 </style>

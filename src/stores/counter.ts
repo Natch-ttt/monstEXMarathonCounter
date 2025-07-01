@@ -104,6 +104,10 @@ export const useCounterStore = defineStore('counter', () => {
       luckyRizaLogs:     [],
     })
   }
+  function updateName(id: string, newName: string) {
+    const item = getItem(id)
+    if (item) item.name = newName
+  }
   function getItem(id: string) {
     return counters.value.find(c => c.id === id)
   }
@@ -130,6 +134,10 @@ export const useCounterStore = defineStore('counter', () => {
     item.encounterLogs    = []
     item.recordSuccess    = []
     item.exDefeats        = 0
+
+    // --- 禁忌EX用データもリセット ---
+    item.treasureLogs     = []
+    item.luckyRizaLogs    = []
   }
   function onEncounter(id: string, num: number) {
     const item = getItem(id)!
@@ -315,6 +323,7 @@ export const useCounterStore = defineStore('counter', () => {
     counters,
     remove,
     add,
+    updateName,
     getItem,
     incrementRun,
     decrementRun,

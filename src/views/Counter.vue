@@ -669,6 +669,7 @@ async function promptEncounter() {
   // ① 数値入力のみのアラート
   const numAlert = await alertController.create({
     header: '収集数を入力',
+    subHeader: '（敗北した場合は0を入力）',
     inputs: [
       {
         name: 'num',
@@ -699,6 +700,12 @@ async function promptEncounter() {
 
   // ② 禁忌EXモードならチェックボックスのアラートを出す
   if (!settings.value.tabooEX || cnt < 2) return
+
+  if (settings.value.tabooEX && cnt === 2) {
+    console.log(cnt)
+    store.onTreasure(id.value, 1)
+    return
+  }
 
   const chkAlert = await alertController.create({
     header: '追加オプションを選択',

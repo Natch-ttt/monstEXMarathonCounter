@@ -157,4 +157,8 @@ const debugSettings = computed(() =>
   border: none;
   background: none;
 }
+.ion-padding ion-list-header {
+  margin-left: 0.2rem;
+}
+
 </style>
