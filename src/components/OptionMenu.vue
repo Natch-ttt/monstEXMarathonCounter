@@ -6,9 +6,9 @@
   </ion-header>
 
   <ion-content class="ion-padding">
-    <pre style="background:#f0f0f0; padding:8px; font-size:0.8em;">
+    <!-- <pre style="background:#f0f0f0; padding:8px; font-size:0.8em;">
       {{ JSON.stringify(store.settingsById, null, 2) }}
-    </pre>
+    </pre> -->
     <!-- モード設定 -->
     <ion-list v-if="settings">
       <ion-list-header>モード設定</ion-list-header>
@@ -60,9 +60,11 @@
 import { watch, computed } from 'vue'
 import { useRoute }       from 'vue-router'
 import { useSettingsStore } from '@/stores/settings'
+import { useMenuStore } from '@/stores/menu'
 import SwitchToggle       from '@/components/SwitchToggle.vue'
 
 // ストア & ルート取得
+const menu = useMenuStore()
 const store = useSettingsStore()
 const route = useRoute()
 const settings = computed(() => store.current)
@@ -87,6 +89,7 @@ type MetaRaw = {
 
 const rawMetrics = [
   { label: '周回数',       key: 'showRuns',       bgKey: 'bgRuns'       },
+  { label: 'ラック',       key: 'showLuck',       bgKey: 'bgLuck'       },
   { label: '遭遇数',       key: 'showEncounters', bgKey: 'bgEncounters' },
   { label: '遭遇率',       key: 'showRate',       bgKey: 'bgRate'       },
   { label: '最短周回',     key: 'showFastest',    bgKey: 'bgFastest'    },

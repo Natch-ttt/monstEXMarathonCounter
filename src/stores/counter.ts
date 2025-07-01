@@ -27,6 +27,8 @@ export interface CounterItem {
   recordSuccess:     RecordSuccess[] // 成功周回ログ
   exDefeats:         number          // 敗北数（全期間）
   runLogs:           number[]        // 周回完了タイムスタンプ一覧
+  treasureLogs:   EncounterLog[]  // 至宝発動ログ：count＝発動数
+  luckyRizaLogs:  EncounterLog[]  // ラキリザ発生ログ：count＝発生数
 }
 
 /** 型: 期間集計結果 */
@@ -40,6 +42,14 @@ export interface PeriodMetrics {
   average:       number|null // 平均周回数
   defeats:       number      // 敗北数
   lastTs:        number      // 最終更新タイムスタンプ
+}
+
+/** 型: 禁忌EXメトリクス集計結果 */
+export interface PeriodTabooMetrics {
+  treasureCount:    number      // 至宝発動数
+  treasureRate:     number      // 発動率（%）
+  luckyRizaCount:   number      // ラキリザ数
+  luckyRizaRate:    number      // 発生率（%）
 }
 
 /** 型: 累計／月別／日別 */
@@ -89,7 +99,9 @@ export const useCounterStore = defineStore('counter', () => {
       encounterLogs:     [],
       recordSuccess:     [],
       exDefeats:         0,
-      runLogs:           []
+      runLogs:           [],
+      treasureLogs:      [],
+      luckyRizaLogs:     [],
     })
   }
   function getItem(id: string) {
@@ -137,6 +149,17 @@ export const useCounterStore = defineStore('counter', () => {
     item.currentRunCount = 0
     // 今回分完了：runLogs もクリア（月別/日別集計の基データ）
     item.runLogs = []
+  }
+
+  //--- 禁忌EX用ログ追加アクション ----------------------------
+  function onTreasure(id: string, num: number) {
+    const item = getItem(id)!
+    item.treasureLogs.push({ count: num, timestamp: Date.now() })
+  }
+
+  function onLuckyRiza(id: string, num: number) {
+    const item = getItem(id)!
+    item.luckyRizaLogs.push({ count: num, timestamp: Date.now() })
   }
 
   //--- ヘルパ：ローカル日付ベースでフィルタ --------------------
@@ -216,6 +239,29 @@ export const useCounterStore = defineStore('counter', () => {
     }
   }
 
+  //--- 期間集計 (禁忌EXメトリクス) ----------------------------
+  function periodTabooMetrics(
+    id: string,
+    p: Period,
+    dateKey?: string
+  ): PeriodTabooMetrics {
+    const base     = periodMetrics(id, p, dateKey)
+    const item     = getItem(id)!
+    const tLogs    = filterTs(item.treasureLogs,  p, dateKey)
+    const lLogs    = filterTs(item.luckyRizaLogs, p, dateKey)
+
+    const treasureCount  = tLogs.reduce((sum, e) => sum + e.count, 0)
+    const luckyRizaCount = lLogs.reduce((sum, e) => sum + e.count, 0)
+    const total      = base.encounters || 0
+
+    return {
+      treasureCount,
+      treasureRate:    total ? (treasureCount  / total) * 100 : 0,
+      luckyRizaCount,
+      luckyRizaRate:   total ? (luckyRizaCount / total) * 100 : 0
+    }
+  }
+
   //--- setter --------------------------------------
   function setPeriod(p: Period) {
     period.value = p
@@ -288,6 +334,10 @@ export const useCounterStore = defineStore('counter', () => {
     // 取得パイプライン
     getFilteredLogs,
     getSortedLogs,
-    getNumberedLogs
+    getNumberedLogs,
+    // 禁忌EX
+    onTreasure,
+    onLuckyRiza,
+    periodTabooMetrics,
   }
 })

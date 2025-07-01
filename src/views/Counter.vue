@@ -112,8 +112,8 @@
         <!-- カードメトリクス -->
         <ion-grid class="metrics-grid">
           <ion-row>
-            <ion-col size="6" v-for="m in dispMetrics" :key="m.label">
-              <ion-card class="metric-card">
+            <ion-col size="6" v-for="m in dispMetrics" :key="m.key">
+              <ion-card class="metric-card" :style="{ backgroundColor: m.bg }">
                 <ion-card-header>
                   <ion-card-title>
                     <!-- Ionicon か MDI か FontAwesomeIcon 切り替え -->
@@ -131,7 +131,40 @@
                 </ion-card-header>
                 <ion-card-content>
                   <span class="metric-value">
-                    {{ m.value }}
+                    {{ m.getValue() }}
+                    <span v-if="m.unit" class="metric-unit">{{ m.unit }}</span>
+                  </span>
+                </ion-card-content>
+              </ion-card>
+            </ion-col>
+          </ion-row>
+        </ion-grid>
+
+        <!-- 禁忌EXメトリクス -->
+        <ion-grid
+          v-if="settings.tabooEX"
+          class="metrics-grid"
+        >
+          <ion-row>
+            <ion-col size="6" v-for="m in dispTabooMetrics" :key="m.key">
+              <ion-card class="metric-card" :style="{ backgroundColor: m.bg }">
+                <ion-card-header>
+                  <ion-card-title>
+                    <template v-if="m.mdi">
+                      <i class="material-icons metric-icon">{{ m.mdi }}</i>
+                    </template>
+                    <template v-else-if="m.fai">
+                      <font-awesome-icon :icon="m.fai" class="metric-icon" />
+                    </template>
+                    <template v-else>
+                      <ion-icon :icon="m.ion" class="metric-icon" />
+                    </template>
+                    {{ m.label }}
+                  </ion-card-title>
+                </ion-card-header>
+                <ion-card-content>
+                  <span class="metric-value">
+                    {{ m.getValue() }}
                     <span v-if="m.unit" class="metric-unit">{{ m.unit }}</span>
                   </span>
                 </ion-card-content>
@@ -211,8 +244,8 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   IonPage, IonHeader, IonToolbar, IonTitle, IonButton, IonButtons, IonBackButton,
-  IonContent, IonGrid, IonRow, IonCol, IonDatetime, IonIcon,
-  IonCard, IonCardHeader, IonCardTitle, IonCardContent,
+  IonContent, IonGrid, IonRow, IonCol, IonDatetime, IonIcon, IonCheckbox,
+  IonCard, IonCardHeader, IonCardTitle, IonCardContent, IonLabel,
   menuController, alertController, onIonViewWillEnter,
 } from '@ionic/vue'
 import type { DatetimeCustomEvent } from '@ionic/vue'
@@ -222,21 +255,26 @@ import {
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 import type { IconDefinition } from '@fortawesome/fontawesome-svg-core'
 import {
-  faPersonRunning, faPercent, faClockRotateLeft, faEraser
+  faPersonRunning, faPercent, faClockRotateLeft, faEraser, faGem, faClover
 } from '@fortawesome/free-solid-svg-icons'
 import { useMenuStore } from '@/stores/menu'
 import { useCounterStore } from '@/stores/counter'
+import { useSettingsStore } from '@/stores/settings'
 // ルート／ストア
 const route = useRoute()
 const router = useRouter()
 const id    = computed(() => route.params.id as string)
 const store = useCounterStore()
 const menu = useMenuStore()
+const settingsStore = useSettingsStore()
 
 const today = new Date()
 
 // CounterItem の取得
 const item = computed(() => store.getItem(id.value)!)
+
+// 現在の設定オブジェクト
+const settings = computed(() => settingsStore.current)
 
 onMounted(async () => {
   try {
@@ -312,6 +350,15 @@ async function toggleRecordMenu() {
 
 // 指標用にストア periodMetrics を呼び出す
 const pm = computed(() => store.periodMetrics(
+  id.value,
+  period.value,
+  period.value === 'month'
+    ? selectedMonth.value
+    : period.value === 'day'
+      ? selectedDay.value
+      : undefined
+))
+const tabooPm = computed(() => store.periodTabooMetrics(
   id.value,
   period.value,
   period.value === 'month'
@@ -439,34 +486,157 @@ const lastUpdateFormatted = computed(() =>
   }).format(lastUpdate.value)
 )
 
-// 1件分のメトリクス定義
-interface Metric {
+// キーを持ったメトリクス定義
+interface MetricDef {
+  key: string
   label: string
   unit: string
-  value: string | number
-
-  /** MDI を使う場合はアイコン文字列 */
+  getValue: () => string|number
   mdi?: string
-
-  /** Ionicons を使う場合（ion-icon の :icon に渡す） */
-  ion?: any /* Ionicons v7 の場合は IconDefinition 型 */
-
-  /** FontAwesome を使う場合 */
-  fai?: IconDefinition
+  ion?: any
+  fai?: any
 }
 
-// テンプレート表示用 metrics 配列 
-const dispMetrics = computed<Metric[]>(() => [
-  { label: '周回数',   fai: faPersonRunning,         unit: '周', value: pm.value.runs },
-  { label: 'ラック',   ion: sparkles,                unit: '',   value: item.value.encounterCount },
-  { label: '遭遇数',   mdi: 'flag',                  unit: '',   value: pm.value.encounters },
-  { label: '遭遇率',   fai: faPercent,               unit: '%',  value: pm.value.encounterRate.toFixed(2) },
-  { label: '最短周回', mdi: 'trending_down',         unit: pm.value.fastest !== null ? '周' : '',  value: pm.value.fastest  ?? '–' },
-  { label: '最長周回', mdi: 'trending_up',           unit: pm.value.slowest  !== null ? '周' : '', value: pm.value.slowest  ?? '–' },
-  { label: '平均周回', mdi: 'align_vertical_center', unit: pm.value.average !== null ? '周' : '',  value: pm.value.average?.toFixed(1) ?? '–' },
-  { label: '総周回数', fai: faClockRotateLeft,       unit: '周', value: pm.value.totalRuns },
-  { label: 'EX敗北数', ion: close,                   unit: '',   value: pm.value.defeats }
-])
+const metricDefs: MetricDef[] = [
+  {
+    key:  'runs',
+    label:'周回数',
+    unit: '周',
+    fai:  faPersonRunning,
+    getValue: () => pm.value.runs,
+  },
+  {
+    key:  'luck',
+    label:'ラック',
+    unit: '',
+    fai:  faClover,
+    getValue: () => item.value.encounterCount,
+  },
+  {
+    key:  'encounters',
+    label:'遭遇数',
+    unit: '',
+    mdi:  'flag',
+    getValue: () => pm.value.encounters,
+  },
+  {
+    key:  'rate',
+    label:'遭遇率',
+    unit: '%',
+    fai: faPercent,
+    getValue: () => pm.value.encounterRate.toFixed(2),
+  },
+  {
+    key:  'fastest',
+    label:'最短周回',
+    unit: pm.value.fastest !== null ? '周' : '',
+    mdi: 'trending_down',
+    getValue: () => pm.value.fastest  ?? '–',
+  },
+  {
+    key:  'slowest',
+    label:'最長周回',
+    unit: pm.value.slowest  !== null ? '周' : '',
+    mdi: 'trending_up',
+    getValue: () => pm.value.slowest  ?? '–',
+  },
+  {
+    key:  'average',
+    label:'平均周回',
+    unit: pm.value.average !== null ? '周' : '',
+    mdi: 'align_vertical_center',
+    getValue: () => pm.value.average?.toFixed(1) ?? '–',
+  },
+  {
+    key:  'total',
+    label:'総周回数',
+    unit: '周',
+    fai: faClockRotateLeft,
+    getValue: () => pm.value.totalRuns,
+  },
+  {
+    key:  'defeats',
+    label:'EX敗北数',
+    unit: '',
+    ion:  close,
+    getValue: () => pm.value.defeats,
+  }
+]
+
+const tabooDefs: MetricDef[] = [
+  {
+    key:  'treasureCount',
+    label:'至宝発動数',
+    unit: '',
+    fai:  faGem,
+    getValue: () => tabooPm.value.treasureCount,
+  },
+  {
+    key:  'treasureRate',
+    label:'至宝発動率',
+    unit: '%',
+    fai:  faPercent,
+    getValue: () => tabooPm.value.treasureRate.toFixed(2),
+  },
+  {
+    key:  'luckyRizaCount',
+    label:'ラキリザ数',
+    unit: '',
+    ion:  sparkles,
+    getValue: () => tabooPm.value.luckyRizaCount,
+  },
+  {
+    key:  'luckyRizaRate',
+    label:'ラキリザ発生率',
+    unit: '%',
+    fai:  faPercent,
+    getValue: () => tabooPm.value.luckyRizaRate.toFixed(2),
+  },
+]
+
+const capitalize = (s: string) =>
+  s.charAt(0).toUpperCase() + s.slice(1)
+
+interface Metric extends MetricDef {
+  bg: string
+  show: boolean
+}
+
+const dispMetrics = computed<Metric[]>(() => {
+  return metricDefs
+    .map(def => {
+      const Cap = capitalize(def.key)
+      const showKey = ('show' + Cap) as keyof typeof settings.value
+      const bgKey   = ('bg'   + Cap) as keyof typeof settings.value
+
+      const show = settings.value[showKey] as boolean
+      if (!show) return null
+
+      const bg = settings.value[bgKey] as string
+      return {
+        ...def,
+        show,
+        bg,
+      } as Metric
+    })
+    .filter((m): m is Metric => m !== null)
+})
+
+const dispTabooMetrics = computed<Metric[]>(() => {
+  return tabooDefs
+    .map(def => {
+      const Cap     = capitalize(def.key)
+      const showKey = (`show${Cap}`) as keyof typeof settings.value
+      const bgKey   = (`bg${Cap}`)   as keyof typeof settings.value
+
+      const show = settings.value[showKey] as boolean
+      if (!show) return null
+
+      const bg = settings.value[bgKey] as string
+      return { ...def, show, bg } as Metric
+    })
+    .filter((m): m is Metric => !!m)
+})
 
 // ボタンハンドラ
 function increment() { store.incrementRun(id.value) }
@@ -495,21 +665,78 @@ async function promptReset() {
 /* 遭遇イベントポップアップ */
 async function promptEncounter() {
   ;(document.activeElement as HTMLElement)?.blur()
-  const alert = await alertController.create({
-    header: '何体収集しましたか？',
-    inputs: [{ name: 'num', type: 'number', min: '0', value: '1', attributes: { autofocus: true } }],
+
+  // ① 数値入力のみのアラート
+  const numAlert = await alertController.create({
+    header: '収集数を入力',
+    inputs: [
+      {
+        name: 'num',
+        type: 'number',
+        min: '0',
+        value: '1',
+        attributes: { autofocus: true }
+      }
+    ],
     buttons: [
       { text: 'キャンセル', role: 'cancel' },
+      { text: '確定', role: 'confirm' }
+    ]
+  })
+  await numAlert.present()
+
+  // ダイアログを閉じたときの結果を受け取る
+  const { role, data } = await numAlert.onDidDismiss()
+  if (role !== 'confirm') return
+
+  // data.values が存在すればそちらを優先
+  const vals = (data as any).values as Record<string,string> || {}
+  const raw  = vals.num ?? (data as any).num ?? '0'
+  const cnt  = parseInt(raw, 10) || 0
+
+  // 遭遇ログ登録
+  store.onEncounter(id.value, cnt)
+
+  // ② 禁忌EXモードならチェックボックスのアラートを出す
+  if (!settings.value.tabooEX || cnt < 2) return
+
+  const chkAlert = await alertController.create({
+    header: '追加オプションを選択',
+    inputs: [
       {
-        text: '確定',
-        handler: data => {
-          const n = parseInt(data.num, 10)
-          store.onEncounter(id.value, isNaN(n) ? 0 : n)
+        name:    'treasure',
+        type:    'checkbox',
+        label:   '至宝発動',
+        value:   'treasure',
+        checked: cnt === 2
+      },
+      {
+        name:    'luckyRiza',
+        type:    'checkbox',
+        label:   'ラキリザ発生',
+        value:   'luckyRiza',
+        checked: cnt >= 3
+      }
+    ],
+    buttons: [
+      // { text: 'スキップ', role: 'cancel' },
+      {
+        text: 'OK',
+        handler: (selected: string[]) => {
+          // handler には選択された value の配列が渡される
+          if (Array.isArray(selected)) {
+            if (selected.includes('treasure')) {
+              store.onTreasure(id.value, 1)
+            }
+            if (selected.includes('luckyRiza')) {
+              store.onLuckyRiza(id.value, 1)
+            }
+          }
         }
       }
     ]
   })
-  await alert.present()
+  await chkAlert.present()
 }
 
 </script>
@@ -522,7 +749,7 @@ async function promptEncounter() {
 /* 中央寄せ＋幅制限をやや狭く */
 .content-wrapper {
   max-width: 480px;
-  margin: 0 auto;
+  margin: 0 auto 2rem;
 }
 
 /* 期間ステート */
@@ -645,7 +872,7 @@ async function promptEncounter() {
 .metrics-grid {
   --ion-grid-column-padding: 0.2rem;  /* 列間 */
   --ion-grid-row-padding:    0.1rem;  /* 行間 */
-  margin-bottom: 0.5rem;
+  margin-bottom: -0.5rem;
 }
 /* モバイル（横幅480px以下）ではさらに小さく */
 @media (max-width: 480px) {

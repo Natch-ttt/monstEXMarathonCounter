@@ -56,7 +56,7 @@ export const useSettingsStore = defineStore(
           showSlowest: true,
           showAverage: true,
           showTotal: true,
-          showDefeats: true,
+          showDefeats: false,
 
           bgRuns: '#f4f5f8',
           bgLuck: '#f4f5f8',
