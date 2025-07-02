@@ -49,6 +49,20 @@ export interface Settings {
   bgDrop4Count: string
   bgDrop5Count: string
 
+  zetukyuEX: boolean
+  showZetuDrop3Count: boolean
+  showZetuDrop4Count: boolean
+  showZetuDrop5Count: boolean
+  showZetuDrop3CountRate: boolean
+  showZetuDrop4CountRate: boolean
+  showZetuDrop5CountRate: boolean
+
+  bgZetuDrop3Count: string
+  bgZetuDrop4Count: string
+  bgZetuDrop5Count: string
+  bgZetuDrop3CountRate: string
+  bgZetuDrop4CountRate: string
+  bgZetuDrop5CountRate: string
 }
 
 export const useSettingsStore = defineStore(
@@ -111,6 +125,20 @@ export const useSettingsStore = defineStore(
           bgDrop3Count: '#f4f5f8',
           bgDrop4Count: '#f4f5f8',
           bgDrop5Count: '#f4f5f8',
+
+          zetukyuEX: false,
+          showZetuDrop3Count: false,
+          showZetuDrop4Count: false,
+          showZetuDrop5Count: false,
+          showZetuDrop3CountRate: false,
+          showZetuDrop4CountRate: false,
+          showZetuDrop5CountRate: false,
+          bgZetuDrop3Count: '#f4f5f8',
+          bgZetuDrop4Count: '#f4f5f8',
+          bgZetuDrop5Count: '#f4f5f8',
+          bgZetuDrop3CountRate: '#f4f5f8',
+          bgZetuDrop4CountRate: '#f4f5f8',
+          bgZetuDrop5CountRate: '#f4f5f8',
         }
       }
       return settingsById.value[currentId.value]
@@ -138,20 +166,38 @@ export const useSettingsStore = defineStore(
     }
     /**
      * 禁忌EXモードの切り替え。
-     * ON にしたら天魔EX は自動で OFF。
+     * ON にしたら他モード は自動で OFF。
      */
     function setTabooEX(id: string, on: boolean) {
       settingsById.value[id].tabooEX = on
-      if (on) settingsById.value[id].temmaEX = false
+      if (on) {
+        settingsById.value[id].temmaEX = false
+        settingsById.value[id].zetukyuEX = false
+      }
     }
 
     /**
      * 天魔EXモードの切り替え。
-     * ON にしたら禁忌EX は自動で OFF。
+     * ON にしたら他モード は自動で OFF。
      */
     function setTemmaEX(id: string, on: boolean) {
       settingsById.value[id].temmaEX = on
-      if (on) settingsById.value[id].tabooEX = false
+      if (on) {
+        settingsById.value[id].tabooEX = false
+        settingsById.value[id].zetukyuEX = false
+      }
+    }
+
+    /**
+     * 絶級EXモードの切り替え。
+     * ON にしたら他モード は自動で OFF。
+     */
+    function setZetukyuEX(id: string, on: boolean) {
+      settingsById.value[id].zetukyuEX = on
+      if (on) {
+        settingsById.value[id].tabooEX = false
+        settingsById.value[id].temmaEX = false
+      }
     }
 
     return {
@@ -162,7 +208,8 @@ export const useSettingsStore = defineStore(
       updateCurrent,
       removeSettings,
       setTabooEX,
-      setTemmaEX
+      setTemmaEX,
+      setZetukyuEX
     }
   },
   // persist オプション

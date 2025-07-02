@@ -251,6 +251,40 @@
             </ion-col>
           </ion-row>
         </ion-grid>
+
+
+        <!-- 絶級EXメトリクス -->
+        <ion-grid
+          v-if="settings.zetukyuEX"
+          class="metrics-grid"
+        >
+          <ion-row>
+            <ion-col size="6" v-for="m in dispZetukyuMetrics" :key="m.key">
+              <ion-card class="metric-card" :style="{ backgroundColor: m.bg }">
+                <ion-card-header>
+                  <ion-card-title>
+                    <template v-if="m.mdi">
+                      <i class="material-icons metric-icon">{{ m.mdi }}</i>
+                    </template>
+                    <template v-else-if="m.fai">
+                      <font-awesome-icon :icon="m.fai" class="metric-icon" />
+                    </template>
+                    <template v-else>
+                      <ion-icon :icon="m.ion" class="metric-icon" />
+                    </template>
+                    {{ m.label }}
+                  </ion-card-title>
+                </ion-card-header>
+                <ion-card-content>
+                  <span class="metric-value">
+                    {{ m.getValue() }}
+                    <span v-if="m.unit" class="metric-unit">{{ m.unit }}</span>
+                  </span>
+                </ion-card-content>
+              </ion-card>
+            </ion-col>
+          </ion-row>
+        </ion-grid>
       </div>
     </ion-content>
 
@@ -455,6 +489,15 @@ const tabooPm = computed(() => counterStore.periodTabooMetrics(
       : undefined
 ))
 const temmaPm = computed(() => counterStore.periodTemmaMetrics(
+  id.value,
+  period.value,
+  period.value === 'month'
+    ? selectedMonth.value
+    : period.value === 'day'
+      ? selectedDay.value
+      : undefined
+))
+const zetukyuPm = computed(() => counterStore.periodZetukyuMetrics(
   id.value,
   period.value,
   period.value === 'month'
@@ -735,6 +778,51 @@ const temmaDefs: MetricDef[] = [
   },
 ]
 
+const zetukyuDefs: MetricDef[] = [
+  {
+    key:  'zetuDrop3Count',
+    label:'3体ドロ発生数',
+    unit: '',
+    fai:  faDiceThree,
+    getValue: () => zetukyuPm.value.zetuDrop3Count,
+  },
+  {
+    key:  'zetuDrop3CountRate',
+    label:'3体ドロ発生率',
+    unit: '%',
+    fai:  faPercent,
+    getValue: () => zetukyuPm.value.zetuDrop3CountRate.toFixed(2),
+  },
+  {
+    key:  'zetuDrop4Count',
+    label:'4体ドロ発生数',
+    unit: '',
+    fai:  faDiceThree,
+    getValue: () => zetukyuPm.value.zetuDrop4Count,
+  },
+  {
+    key:  'zetuDrop4CountRate',
+    label:'4体ドロ発生率',
+    unit: '%',
+    fai:  faPercent,
+    getValue: () => zetukyuPm.value.zetuDrop4CountRate.toFixed(2),
+  },
+  {
+    key:  'zetuDrop5Count',
+    label:'5体ドロ発生数',
+    unit: '',
+    fai:  faDiceThree,
+    getValue: () => zetukyuPm.value.zetuDrop5Count,
+  },
+  {
+    key:  'zetuDrop5CountRate',
+    label:'5体ドロ発生率',
+    unit: '%',
+    fai:  faPercent,
+    getValue: () => zetukyuPm.value.zetuDrop5CountRate.toFixed(2),
+  },
+]
+
 const capitalize = (s: string) =>
   s.charAt(0).toUpperCase() + s.slice(1)
 
@@ -795,6 +883,22 @@ const dispTemmaMetrics = computed<Metric[]>(() => {
     .filter((m): m is Metric => !!m)
 })
 
+const dispZetukyuMetrics = computed<Metric[]>(() => {
+  return zetukyuDefs
+    .map(def => {
+      const Cap     = capitalize(def.key)
+      const showKey = (`show${Cap}`) as keyof typeof settings.value
+      const bgKey   = (`bg${Cap}`)   as keyof typeof settings.value
+
+      const show = settings.value[showKey] as boolean
+      if (!show) return null
+
+      const bg = settings.value[bgKey] as string
+      return { ...def, show, bg } as Metric
+    })
+    .filter((m): m is Metric => !!m)
+})
+
 // ボタンハンドラ
 function increment() { counterStore.incrementRun(id.value) }
 function decrement() { counterStore.decrementRun(id.value) }
@@ -821,9 +925,13 @@ async function promptReset() {
 
 /* 遭遇イベントポップアップ */
 async function promptEncounter() {
-  ;(document.activeElement as HTMLElement)?.blur()
+  (document.activeElement as HTMLElement)?.blur()
 
-  const maxNum = settings.value.temmaEX ? 5 : 20
+  const valNum = settings.value.zetukyuEX ? 3: 1
+  const maxNum = settings.value.temmaEX ? 5: 
+                settings.value.zetukyuEX ? 5:
+                settings.value.tabooEX ? 20: 99
+  const minNum = 0
 
   // ① 数値入力のみのアラート
   const numAlert = await alertController.create({
@@ -833,9 +941,9 @@ async function promptEncounter() {
       {
         name: 'num',
         type: 'number',
-        min: '0',
+        min: String(minNum),
         max: String(maxNum),
-        value: '1',
+        value: String(valNum),
         attributes: { autofocus: true }
       }
     ],
@@ -855,14 +963,56 @@ async function promptEncounter() {
   const raw  = vals.num ?? (data as any).num ?? '0'
   const cnt  = parseInt(raw, 10) || 0
 
-  // 遭遇ログ登録
-  counterStore.onEncounter(id.value, cnt)
+  // 収集数が範囲外の場合はエラー
+  if (cnt < minNum || cnt > maxNum) {
+    const errorAlert = await alertController.create({
+      header: '入力エラー',
+      message: `収集数は ${minNum}〜${maxNum} の範囲で入力してください。`,
+      buttons: [
+        {
+          text: '戻る',
+          role: 'cancel',
+          handler: () => {
+            // 再度入力ダイアログを開く
+            promptEncounter()
+          }
+        }
+      ]
+    })
+    await errorAlert.present()
+  }
+  else if (settings.value.zetukyuEX && (cnt === 1 || cnt === 2)) {
+    // 絶級EXモードで、収集数が1と2の場合はアラートを出す
+    const confirmAlert = await alertController.create({
+      header: '確認',
+      message: `収集数が ${cnt} 体です。本当にこの収集数でよろしいですか？`,
+      buttons: [
+        {
+          text: '戻る',
+          role: 'cancel',
+          handler: () => {
+            // 再度入力ダイアログを開く
+            promptEncounter()
+          }
+        },
+        {
+          text: 'OK',
+          handler: () => {
+            counterStore.onEncounter(id.value, cnt)
+          }
+        }
+      ]
+    })
+    await confirmAlert.present()
+  } else {
+    // 遭遇ログ登録
+    counterStore.onEncounter(id.value, cnt)
+  }
 
-  // ② 禁忌EXモードならチェックボックスのアラートを出す
+  // 禁忌EXモードならチェックボックスのアラートを出す
   if (!settings.value.tabooEX || cnt < 2) return
 
   if (settings.value.tabooEX && cnt === 2) {
-    console.log(cnt)
     counterStore.onTreasure(id.value, 1)
     return
   }

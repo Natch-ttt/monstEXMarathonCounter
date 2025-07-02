@@ -62,6 +62,16 @@ export interface PeriodTemmaMetrics {
   drop5Count:       number
 }
 
+/** 型: 絶級EXメトリクス集計結果 */
+export interface PeriodZetukyuMetrics {
+  zetuDrop3Count:       number
+  zetuDrop4Count:       number
+  zetuDrop5Count:       number
+  zetuDrop3CountRate:   number
+  zetuDrop4CountRate:   number
+  zetuDrop5CountRate:   number
+}
+
 /** 型: 累計／月別／日別 */
 export type Period = 'all' | 'month' | 'day'
 
@@ -340,6 +350,38 @@ export const useCounterStore = defineStore('counter', () => {
     }
   }
 
+    //--- 期間集計 (絶級EXメトリクス) ----------------------------
+  function periodZetukyuMetrics(
+    id: string,
+    p: Period,
+    dateKey?: string
+  ): PeriodZetukyuMetrics {
+    const base     = periodMetrics(id, p, dateKey)
+    const item     = getItem(id)!
+    // 該当期間の遭遇ログ
+    const logs    = filterTs(item.encounterLogs, p, dateKey)
+      .filter(e => e.count >= 2)
+    const totalEnc      = base.encounters || 0
+
+    // 各体数ドロップ数
+    const drop3 = logs.filter(e => e.count === 3).length
+    const drop4 = logs.filter(e => e.count === 4).length
+    const drop5 = logs.filter(e => e.count === 5).length
+
+    const drop3Rate = totalEnc? (drop3 / totalEnc) * 100: 0
+    const drop4Rate = totalEnc? (drop4 / totalEnc) * 100: 0
+    const drop5Rate = totalEnc? (drop5 / totalEnc) * 100: 0
+
+    return {
+      zetuDrop3Count: drop3,
+      zetuDrop4Count: drop4,
+      zetuDrop5Count: drop5,
+      zetuDrop3CountRate: drop3Rate,
+      zetuDrop4CountRate: drop4Rate,
+      zetuDrop5CountRate: drop5Rate,
+    }
+  }
+
   //--- setter --------------------------------------
   function setPeriod(p: Period) {
     period.value = p
@@ -422,5 +464,7 @@ export const useCounterStore = defineStore('counter', () => {
     periodTabooMetrics,
     // 天魔EX
     periodTemmaMetrics,
+    // 絶級EX
+    periodZetukyuMetrics
   }
 })

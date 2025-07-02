@@ -20,6 +20,10 @@
         <ion-label>天魔EXモード</ion-label>
         <SwitchToggle v-model="temmaEX" />
       </ion-item>
+      <ion-item>
+        <ion-label>絶級EXモード</ion-label>
+        <SwitchToggle v-model="zetukyuEX" />
+      </ion-item>
     </ion-list>
 
     <!-- 表示設定 -->
@@ -75,6 +79,24 @@
         <SwitchToggle v-model="m.showRef.value" />
       </ion-item>
     </ion-list>
+
+    <!-- 絶級EX追加設定 -->
+    <ion-list v-if="settings && settings.zetukyuEX">
+      <!-- <ion-list-header>EX追加表示</ion-list-header> -->
+      <ion-item
+        v-for="m in zetukyuMeta"
+        :key="m.label"
+        class="display-item"
+      >
+        <ion-label class="item-label">{{ m.label }}</ion-label>
+        <input
+          type="color"
+          v-model="m.bgRef.value"
+          class="color-picker"
+        />
+        <SwitchToggle v-model="m.showRef.value" />
+      </ion-item>
+    </ion-list>
   </ion-content>
 </template>
 
@@ -90,7 +112,7 @@ const menu = useMenuStore()
 const store = useSettingsStore()
 const route = useRoute()
 const settings = computed(() => store.current)
-const id = route.params.id as string
+const id = computed(() => route.params.id as string) 
 
 // ルートの :id が変わったら currentId を更新
 watch(
@@ -106,12 +128,17 @@ watch(
 // v-model 用 computed をアクションへバインド
 const tabooEX = computed({
   get: () => settings.value.tabooEX,
-  set: (v: boolean) => store.setTabooEX(id, v)
+  set: (v: boolean) => store.setTabooEX(id.value, v)
 })
 
 const temmaEX = computed({
   get: () => settings.value.temmaEX,
-  set: (v: boolean) => store.setTemmaEX(id, v)
+  set: (v: boolean) => store.setTemmaEX(id.value, v)
+})
+
+const zetukyuEX = computed({
+  get: () => settings.value.zetukyuEX,
+  set: (v: boolean) => store.setZetukyuEX(id.value, v)
 })
 
 // raw 定義：ラベルとストアのキー
@@ -122,31 +149,40 @@ type MetaRaw = {
 }
 
 const rawMetrics = [
-  { label: '周回数',       key: 'showRuns',       bgKey: 'bgRuns'       },
-  { label: 'ラック',       key: 'showLuck',       bgKey: 'bgLuck'       },
+  { label: '周回数',       key: 'showRuns',       bgKey: 'bgRuns' },
+  { label: 'ラック',       key: 'showLuck',       bgKey: 'bgLuck' },
   { label: '遭遇数',       key: 'showEncounters', bgKey: 'bgEncounters' },
-  { label: '遭遇率',       key: 'showRate',       bgKey: 'bgRate'       },
-  { label: '最短周回数',     key: 'showFastest',    bgKey: 'bgFastest'    },
-  { label: '最長周回数',     key: 'showSlowest',    bgKey: 'bgSlowest'    },
-  { label: '平均周回数',     key: 'showAverage',    bgKey: 'bgAverage'    },
-  { label: '総周回数',     key: 'showTotal',      bgKey: 'bgTotal'      },
-  { label: 'EX敗北数',     key: 'showDefeats',    bgKey: 'bgDefeats'    },
+  { label: '遭遇率',       key: 'showRate',       bgKey: 'bgRate' },
+  { label: '最短周回数',   key: 'showFastest',    bgKey: 'bgFastest' },
+  { label: '最長周回数',   key: 'showSlowest',    bgKey: 'bgSlowest' },
+  { label: '平均周回数',   key: 'showAverage',    bgKey: 'bgAverage' },
+  { label: '総周回数',     key: 'showTotal',      bgKey: 'bgTotal' },
+  { label: 'EX敗北数',     key: 'showDefeats',    bgKey: 'bgDefeats' },
 ] as const satisfies readonly MetaRaw[]
 
 const rawTaboo = [
   { label: '至宝発動数',    key: 'showTreasureCount', bgKey: 'bgTreasureCount' },
-  { label: '至宝発動率',    key: 'showTreasureRate',  bgKey: 'bgTreasureRate'  },
+  { label: '至宝発動率',    key: 'showTreasureRate',  bgKey: 'bgTreasureRate' },
   { label: 'ラキリザ数',    key: 'showLuckyRizaCount', bgKey: 'bgLuckyRizaCount' },
-  { label: 'ラキリザ発生率', key: 'showLuckyRizaRate',  bgKey: 'bgLuckyRizaRate'  },
+  { label: 'ラキリザ発生率', key: 'showLuckyRizaRate',  bgKey: 'bgLuckyRizaRate' },
 ] as const satisfies readonly MetaRaw[]
 
 const rawTemma = [
   { label: '複数ドロ発生数', key: 'showMultipleCount', bgKey: 'bgMultipleCount' },
   { label: '複数ドロ発生率', key: 'showMultipleRate',  bgKey: 'bgMultipleRate' },
-  { label: '2体ドロ発生数',  key: 'showDrop2Count',    bgKey: 'bgDrop2Count'  },
-  { label: '3体ドロ発生数',  key: 'showDrop3Count',    bgKey: 'bgDrop3Count'  },
-  { label: '4体ドロ発生数',  key: 'showDrop4Count',    bgKey: 'bgDrop4Count'  },
-  { label: '5体ドロ発生数',  key: 'showDrop5Count',    bgKey: 'bgDrop5Count'  },
+  { label: '2体ドロ発生数',  key: 'showDrop2Count',    bgKey: 'bgDrop2Count' },
+  { label: '3体ドロ発生数',  key: 'showDrop3Count',    bgKey: 'bgDrop3Count' },
+  { label: '4体ドロ発生数',  key: 'showDrop4Count',    bgKey: 'bgDrop4Count' },
+  { label: '5体ドロ発生数',  key: 'showDrop5Count',    bgKey: 'bgDrop5Count' },
+] as const satisfies readonly MetaRaw[]
+
+const rawZetukyu = [
+  { label: '3体ドロ発生数', key: 'showZetuDrop3Count',    bgKey: 'bgZetuDrop3Count' },
+  { label: '3体ドロ発生率', key: 'showZetuDrop3CountRate', bgKey: 'bgZetuDrop3CountRate' },
+  { label: '4体ドロ発生数', key: 'showZetuDrop4Count',    bgKey: 'bgZetuDrop4Count' },
+  { label: '4体ドロ発生率', key: 'showZetuDrop4CountRate', bgKey: 'bgZetuDrop4CountRate' },
+  { label: '5体ドロ発生数', key: 'showZetuDrop5Count',    bgKey: 'bgZetuDrop5Count' },
+  { label: '5体ドロ発生率', key: 'showZetuDrop5CountRate', bgKey: 'bgZetuDrop5CountRate' },
 ] as const satisfies readonly MetaRaw[]
 
 // 双方向に書き込める Ref を作成
@@ -175,6 +211,18 @@ const tabooMeta = rawTaboo.map(m => ({
 }))
 
 const temmaMeta = rawTemma.map(m => ({
+  label: m.label,
+  showRef: computed<boolean>({
+    get: () => settings.value[m.key],
+    set: v => store.updateCurrent(m.key, v)
+  }),
+  bgRef: computed<string>({
+    get: () => settings.value[m.bgKey],
+    set: v => store.updateCurrent(m.bgKey, v)
+  })
+}))
+
+const zetukyuMeta = rawZetukyu.map(m => ({
   label: m.label,
   showRef: computed<boolean>({
     get: () => settings.value[m.key],
