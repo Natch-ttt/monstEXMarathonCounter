@@ -1,0 +1,33 @@
+/* 入力フィールドのフォントサイズを16px */
+ion-app input,
+ion-app textarea {
+  font-size: 16px !important;
+}
+
+/* 月次 (compact) */
+ion-popover {
+  --width: 300px;
+  --height: auto;
+}
+ion-popover.compact-popover {
+  --width: 280px;
+  --height: auto;
+}
+/* 日次 (wide) */
+ion-popover.compact-popover.wide-popover {
+  --width: 340px;
+  --height: auto;
+}
+
+.alert-sub-title.sc-ion-alert-md {
+  font-size: 1rem;
+  margin-top: 0.5rem;
+  margin-bottom: 0;
+  color:      var(--ion-color-medium);  /* グレー系の変数色 */
+}
+
+.encounter-log-toolbar ion-title {
+  text-align: left !important;
+  /* 左右のパディングは必要に応じて調整 */
+  padding-left: 1rem;
+}

@@ -1,22 +1,21 @@
-import { createRouter, createWebHistory, createWebHashHistory  } from '@ionic/vue-router';
-import { RouteRecordRaw } from 'vue-router';
-import HomePage    from '@/views/HomePage.vue'
-import CounterPage from '@/views/CounterPage.vue'
+import type { RouteRecordRaw } from 'vue-router'
+import { createRouter, createWebHashHistory } from '@ionic/vue-router'
+import { menuController } from '@ionic/vue'
+import Home from '@/views/Home.vue'
+import Counter from '@/views/Counter.vue'
 
-const routes: Array<RouteRecordRaw> = [
-  { path: '/', redirect: '/home' },
-  { path: '/home',    name: 'Home',    component: HomePage },
-  { path: '/counter/:id', name: 'Counter', component: CounterPage, props: true },
+const routes: RouteRecordRaw[] = [
+  { path: '/',      name: 'Home',  component: Home  },
+  { path: '/counter/:id', name: 'Counter', component: Counter, props: true },
 ]
 
-export const router = createRouter({
-  // history: createWebHistory(import.meta.env.BASE_URL),
-  history: createWebHashHistory(),   // ← Hash モードに
-  routes: [
-    { path: '/', redirect: '/home' },
-    { path: '/home', name: 'Home', component: HomePage },
-    { path: '/counter/:id', name: 'Counter', component: CounterPage, props: true },
-  ]
+const router = createRouter({
+  history: createWebHashHistory(import.meta.env.BASE_URL),
+  routes
+})
+
+router.afterEach(async () => {
+  await menuController.close()
 })
 
 export default router
