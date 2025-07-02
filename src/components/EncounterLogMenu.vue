@@ -1,7 +1,7 @@
 <template>
   <ion-header>
-    <ion-toolbar>
-      <ion-title>
+    <ion-toolbar class="encounter-log-toolbar">
+      <ion-title slot="start" class="ion-text-start">
         <span class="log-title">遭遇ログ</span>
         <span class="current-period">{{ headerPeriodLabel }}</span>
       </ion-title>
@@ -121,7 +121,7 @@ function formatDate(ts: number) {
 .log-title {
   font-size: 1.2rem;
   font-weight: 600;
-  margin-right: 0.8rem;
+  margin-right: 0.5rem;
 }
 .current-period {
   font-size: 0.9rem;

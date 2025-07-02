@@ -5,6 +5,10 @@ ion-app textarea {
 }
 
 /* 月次 (compact) */
+ion-popover {
+  --width: 300px;
+  --height: auto;
+}
 ion-popover.compact-popover {
   --width: 280px;
   --height: auto;
@@ -20,4 +24,10 @@ ion-popover.compact-popover.wide-popover {
   margin-top: 0.5rem;
   margin-bottom: 0;
   color:      var(--ion-color-medium);  /* グレー系の変数色 */
+}
+
+.encounter-log-toolbar ion-title {
+  text-align: left !important;
+  /* 左右のパディングは必要に応じて調整 */
+  padding-left: 1rem;
 }

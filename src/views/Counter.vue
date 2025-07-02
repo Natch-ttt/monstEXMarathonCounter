@@ -5,27 +5,65 @@
         <ion-buttons slot="start">
           <ion-back-button default-href="/" />
         </ion-buttons>
-        <ion-title>{{ item.name }}</ion-title>
+        <ion-title class="counter-title">{{ item.name }}</ion-title>
         <!-- ヘッダーボタン群 -->
-        <ion-buttons slot="end" class="header-end-button">
-          <!-- エクスポート -->
-          <ion-button @click="exportBackup">
-            <ion-icon :icon="saveOutline" slot="icon-only" />
-          </ion-button>
-          <!-- インポート -->
-          <ion-button @click="importBackup">
-            <ion-icon :icon="downloadOutline" slot="icon-only" />
-          </ion-button>
-          <!-- オプションボタン -->
-          <ion-button fill="clear" @click="toggleOptionMenu">
-            <ion-icon slot="icon-only" :icon="settingsOutline" />
-          </ion-button>
-          <!-- 遭遇ログボタン -->
-          <ion-button fill="clear" @click="toggleRecordMenu">
-            <ion-icon slot="icon-only" :icon="menuOutline" />
-          </ion-button>
-        </ion-buttons>
-      </ion-toolbar>
+          <!-- デスクトップ：個別アイコン -->
+          <ion-buttons slot="end" v-if="isDesktop">
+            <!-- エクスポート -->
+            <ion-button @click="exportBackup">
+              <ion-icon :icon="saveOutline" slot="icon-only" />
+            </ion-button>
+            <!-- インポート -->
+            <ion-button @click="importBackup">
+              <ion-icon :icon="downloadOutline" slot="icon-only" />
+            </ion-button>
+            <!-- オプションボタン -->
+            <ion-button fill="clear" @click="toggleOptionMenu">
+              <ion-icon slot="icon-only" :icon="settingsOutline" />
+            </ion-button>
+            <!-- 遭遇ログボタン -->
+            <ion-button fill="clear" @click="toggleRecordMenu">
+              <ion-icon slot="icon-only" :icon="menuOutline" />
+            </ion-button>
+          </ion-buttons>
+
+          <!-- モバイル：メニューアイコン -->
+          <ion-buttons slot="end" v-else>
+            <!-- ポップオーバーボタン -->
+            <ion-button @click="showMenu = true">
+              <ion-icon :icon="ellipsisHorizontalOutline" />
+            </ion-button>
+            <!-- オプションボタン -->
+            <ion-button fill="clear" @click="toggleOptionMenu">
+              <ion-icon slot="icon-only" :icon="settingsOutline" />
+            </ion-button>
+            <!-- 遭遇ログボタン -->
+            <ion-button fill="clear" @click="toggleRecordMenu">
+              <ion-icon slot="icon-only" :icon="menuOutline" />
+            </ion-button>
+          </ion-buttons>
+
+          <!-- ポップオーバー -->
+          <ion-popover
+            v-model:is-open="showMenu"
+            side="bottom"
+            alignment="end"
+            arrow="true"
+            @ionPopoverDidDismiss="onMenuPopoverDismiss"
+          >
+            <ion-list>
+              <ion-item button @click="exportBackup">
+                <ion-icon slot="start" :icon="saveOutline" />
+                <ion-label>バックアップ出力</ion-label>
+              </ion-item>
+              <ion-item button @click="importBackup">
+                <ion-icon slot="start" :icon="downloadOutline" />
+                <ion-label>バックアップ読込</ion-label>
+              </ion-item>
+            </ion-list>
+          </ion-popover>
+
+        </ion-toolbar>
     </ion-header>
 
     <ion-content fullscreen class="ion-padding">
@@ -254,12 +292,12 @@ import {
   IonPage, IonHeader, IonToolbar, IonTitle, IonButton, IonButtons, IonBackButton,
   IonContent, IonGrid, IonRow, IonCol, IonDatetime, IonIcon, IonCheckbox,
   IonCard, IonCardHeader, IonCardTitle, IonCardContent, IonLabel,
-  menuController, alertController, onIonViewWillEnter,
+  menuController, alertController, onIonViewWillEnter, isPlatform
 } from '@ionic/vue'
 import type { DatetimeCustomEvent } from '@ionic/vue'
 import {
   sparkles, close, calendarOutline, calendarSharp, todaySharp,
-  menuOutline, settingsOutline, downloadOutline, saveOutline
+  menuOutline, settingsOutline, downloadOutline, saveOutline, ellipsisHorizontalOutline
 } from 'ionicons/icons'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 import {
@@ -278,6 +316,13 @@ const menuStore = useMenuStore()
 const settingsStore = useSettingsStore()
 
 const today = new Date()
+
+const isDesktop = isPlatform('desktop')
+const showMenu  = ref(false)
+
+function onMenuPopoverDismiss() {
+  showMenu.value = false
+}
 
 // CounterItem の取得
 const item = computed(() => counterStore.getItem(id.value)!)
@@ -797,6 +842,8 @@ function exportBackup() {
   a.download = filename
   a.click()
   URL.revokeObjectURL(url)
+
+  onMenuPopoverDismiss()
 }
 
 // --- 2) インポート処理の起点 ---
@@ -831,6 +878,7 @@ function importBackup() {
     }
   }
   input.click()
+  onMenuPopoverDismiss()
 }
 
 // --- 3) 上書き確認アラート＋ロード ---
@@ -865,6 +913,12 @@ function applyBackup(backup: any) {
 <style scoped>
 .header-end-button{
   margin-right: 1rem;
+}
+
+.counter-title {
+  /* タイトル左寄せ */
+  text-align: left;
+  margin-left: 1rem;
 }
 
 /* 中央寄せ＋幅制限をやや狭く */
