@@ -33,6 +33,22 @@ export interface Settings {
   bgTreasureRate: string
   bgLuckyRizaCount: string
   bgLuckyRizaRate: string
+
+  temmaEX: boolean
+  showMultipleCount: boolean
+  showMultipleRate: boolean
+  showDrop2Count: boolean
+  showDrop3Count: boolean
+  showDrop4Count: boolean
+  showDrop5Count: boolean
+
+  bgMultipleCount: string
+  bgMultipleRate: string
+  bgDrop2Count: string
+  bgDrop3Count: string
+  bgDrop4Count: string
+  bgDrop5Count: string
+
 }
 
 export const useSettingsStore = defineStore(
@@ -79,6 +95,22 @@ export const useSettingsStore = defineStore(
           bgTreasureRate: '#f4f5f8',
           bgLuckyRizaCount: '#f4f5f8',
           bgLuckyRizaRate: '#f4f5f8',
+
+          temmaEX: false,
+
+          showMultipleCount: true,
+          showMultipleRate: true,
+          showDrop2Count: false,
+          showDrop3Count: false,
+          showDrop4Count: false,
+          showDrop5Count: false,
+
+          bgMultipleCount: '#f4f5f8',
+          bgMultipleRate: '#f4f5f8',
+          bgDrop2Count: '#f4f5f8',
+          bgDrop3Count: '#f4f5f8',
+          bgDrop4Count: '#f4f5f8',
+          bgDrop5Count: '#f4f5f8',
         }
       }
       return settingsById.value[currentId.value]
@@ -104,13 +136,33 @@ export const useSettingsStore = defineStore(
         currentId.value = ''
       }
     }
+    /**
+     * 禁忌EXモードの切り替え。
+     * ON にしたら天魔EX は自動で OFF。
+     */
+    function setTabooEX(id: string, on: boolean) {
+      settingsById.value[id].tabooEX = on
+      if (on) settingsById.value[id].temmaEX = false
+    }
+
+    /**
+     * 天魔EXモードの切り替え。
+     * ON にしたら禁忌EX は自動で OFF。
+     */
+    function setTemmaEX(id: string, on: boolean) {
+      settingsById.value[id].temmaEX = on
+      if (on) settingsById.value[id].tabooEX = false
+    }
+
     return {
       settingsById,
       currentId,
       current,
       setCurrentId,
       updateCurrent,
-      removeSettings
+      removeSettings,
+      setTabooEX,
+      setTemmaEX
     }
   },
   // persist オプション

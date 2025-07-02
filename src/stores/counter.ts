@@ -52,6 +52,16 @@ export interface PeriodTabooMetrics {
   luckyRizaRate:    number      // 発生率（%）
 }
 
+/** 型: 天魔EXメトリクス集計結果 */
+export interface PeriodTemmaMetrics {
+  multipleCount:    number  // count>=2 の遭遇回数
+  multipleRate:     number  // 発生率（%）
+  drop2Count:       number
+  drop3Count:       number
+  drop4Count:       number
+  drop5Count:       number
+}
+
 /** 型: 累計／月別／日別 */
 export type Period = 'all' | 'month' | 'day'
 
@@ -296,6 +306,40 @@ export const useCounterStore = defineStore('counter', () => {
     }
   }
 
+  //--- 期間集計 (天魔EXメトリクス) ----------------------------
+  function periodTemmaMetrics(
+    id: string,
+    p: Period,
+    dateKey?: string
+  ): PeriodTemmaMetrics {
+    const base     = periodMetrics(id, p, dateKey)
+    const item     = getItem(id)!
+    // 該当期間の遭遇ログ
+    const logs    = filterTs(item.encounterLogs, p, dateKey)
+      .filter(e => e.count >= 2)
+
+    const multipleCount = logs.length
+    const totalEnc      = base.encounters || 0
+    const multipleRate  = totalEnc
+      ? (multipleCount / totalEnc) * 100
+      : 0
+
+    // 各体数ドロップ数
+    const drop2 = logs.filter(e => e.count === 2).length
+    const drop3 = logs.filter(e => e.count === 3).length
+    const drop4 = logs.filter(e => e.count === 4).length
+    const drop5 = logs.filter(e => e.count === 5).length
+
+    return {
+      multipleCount,
+      multipleRate,
+      drop2Count: drop2,
+      drop3Count: drop3,
+      drop4Count: drop4,
+      drop5Count: drop5
+    }
+  }
+
   //--- setter --------------------------------------
   function setPeriod(p: Period) {
     period.value = p
@@ -376,5 +420,7 @@ export const useCounterStore = defineStore('counter', () => {
     onTreasure,
     onLuckyRiza,
     periodTabooMetrics,
+    // 天魔EX
+    periodTemmaMetrics,
   }
 })

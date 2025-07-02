@@ -218,6 +218,39 @@
             </ion-col>
           </ion-row>
         </ion-grid>
+
+        <!-- 天魔EXメトリクス -->
+        <ion-grid
+          v-if="settings.temmaEX"
+          class="metrics-grid"
+        >
+          <ion-row>
+            <ion-col size="6" v-for="m in dispTemmaMetrics" :key="m.key">
+              <ion-card class="metric-card" :style="{ backgroundColor: m.bg }">
+                <ion-card-header>
+                  <ion-card-title>
+                    <template v-if="m.mdi">
+                      <i class="material-icons metric-icon">{{ m.mdi }}</i>
+                    </template>
+                    <template v-else-if="m.fai">
+                      <font-awesome-icon :icon="m.fai" class="metric-icon" />
+                    </template>
+                    <template v-else>
+                      <ion-icon :icon="m.ion" class="metric-icon" />
+                    </template>
+                    {{ m.label }}
+                  </ion-card-title>
+                </ion-card-header>
+                <ion-card-content>
+                  <span class="metric-value">
+                    {{ m.getValue() }}
+                    <span v-if="m.unit" class="metric-unit">{{ m.unit }}</span>
+                  </span>
+                </ion-card-content>
+              </ion-card>
+            </ion-col>
+          </ion-row>
+        </ion-grid>
       </div>
     </ion-content>
 
@@ -302,7 +335,7 @@ import {
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 import {
   faPersonRunning, faPercent, faClockRotateLeft, faEraser,
-  faGem, faClover
+  faGem, faClover, faDiceTwo, faDiceThree, faDiceFour, faDiceFive,
 } from '@fortawesome/free-solid-svg-icons'
 import { useMenuStore } from '@/stores/menu'
 import { useCounterStore } from '@/stores/counter'
@@ -413,6 +446,15 @@ const pm = computed(() => counterStore.periodMetrics(
       : undefined
 ))
 const tabooPm = computed(() => counterStore.periodTabooMetrics(
+  id.value,
+  period.value,
+  period.value === 'month'
+    ? selectedMonth.value
+    : period.value === 'day'
+      ? selectedDay.value
+      : undefined
+))
+const temmaPm = computed(() => counterStore.periodTemmaMetrics(
   id.value,
   period.value,
   period.value === 'month'
@@ -582,21 +624,21 @@ const metricDefs: MetricDef[] = [
   },
   {
     key:  'fastest',
-    label:'最短周回',
+    label:'最短周回数',
     unit: pm.value.fastest !== null ? '周' : '',
     mdi: 'trending_down',
     getValue: () => pm.value.fastest  ?? '–',
   },
   {
     key:  'slowest',
-    label:'最長周回',
+    label:'最長周回数',
     unit: pm.value.slowest  !== null ? '周' : '',
     mdi: 'trending_up',
     getValue: () => pm.value.slowest  ?? '–',
   },
   {
     key:  'average',
-    label:'平均周回',
+    label:'平均周回数',
     unit: pm.value.average !== null ? '周' : '',
     mdi: 'align_vertical_center',
     getValue: () => pm.value.average?.toFixed(1) ?? '–',
@@ -648,6 +690,51 @@ const tabooDefs: MetricDef[] = [
   },
 ]
 
+const temmaDefs: MetricDef[] = [
+  {
+    key:  'multipleCount',
+    label:'複数ドロ発生数',
+    unit: '',
+    fai:  faGem,
+    getValue: () => temmaPm.value.multipleCount,
+  },
+  {
+    key:  'multipleRate',
+    label:'複数ドロ発生率',
+    unit: '%',
+    fai:  faPercent,
+    getValue: () => temmaPm.value.multipleRate.toFixed(2),
+  },
+  {
+    key:  'drop2Count',
+    label:'2体ドロ発生数',
+    unit: '',
+    fai:  faDiceTwo,
+    getValue: () => temmaPm.value.drop2Count,
+  },
+  {
+    key:  'drop3Count',
+    label:'3体ドロ発生数',
+    unit: '',
+    fai:  faDiceThree,
+    getValue: () => temmaPm.value.drop3Count,
+  },
+  {
+    key:  'drop4Count',
+    label:'4体ドロ発生数',
+    unit: '',
+    fai:  faDiceFour,
+    getValue: () => temmaPm.value.drop4Count,
+  },
+  {
+    key:  'drop5Count',
+    label:'5体ドロ発生数',
+    unit: '',
+    fai:  faDiceFive,
+    getValue: () => temmaPm.value.drop5Count,
+  },
+]
+
 const capitalize = (s: string) =>
   s.charAt(0).toUpperCase() + s.slice(1)
 
@@ -692,6 +779,22 @@ const dispTabooMetrics = computed<Metric[]>(() => {
     .filter((m): m is Metric => !!m)
 })
 
+const dispTemmaMetrics = computed<Metric[]>(() => {
+  return temmaDefs
+    .map(def => {
+      const Cap     = capitalize(def.key)
+      const showKey = (`show${Cap}`) as keyof typeof settings.value
+      const bgKey   = (`bg${Cap}`)   as keyof typeof settings.value
+
+      const show = settings.value[showKey] as boolean
+      if (!show) return null
+
+      const bg = settings.value[bgKey] as string
+      return { ...def, show, bg } as Metric
+    })
+    .filter((m): m is Metric => !!m)
+})
+
 // ボタンハンドラ
 function increment() { counterStore.incrementRun(id.value) }
 function decrement() { counterStore.decrementRun(id.value) }
@@ -720,6 +823,8 @@ async function promptReset() {
 async function promptEncounter() {
   ;(document.activeElement as HTMLElement)?.blur()
 
+  const maxNum = settings.value.temmaEX ? 5 : 20
+
   // ① 数値入力のみのアラート
   const numAlert = await alertController.create({
     header: '収集数を入力',
@@ -729,6 +834,7 @@ async function promptEncounter() {
         name: 'num',
         type: 'number',
         min: '0',
+        max: String(maxNum),
         value: '1',
         attributes: { autofocus: true }
       }
