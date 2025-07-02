@@ -85,6 +85,32 @@ export const useCounterStore = defineStore('counter', () => {
     { deep: true }
   )
 
+  //--- バックアップ読込アクション ----------------------------
+  /**
+   * ストア全体をバックアップデータで上書き
+   * @param backup JSON.parse したバックアップオブジェクト
+   */
+  function loadBackup(backup: { counters: CounterItem[] }) {
+    // 型チェックやマージ処理が必要ならここで行う
+    counters.value = backup.counters || []
+  }
+
+  /**
+   * 特定のカウンターをバックアップデータで上書き（IDは変更しない）
+   */
+  function loadCounterBackup(targetId: string, backup: CounterItem) {
+    const dest = getItem(targetId)
+    if (!dest) return
+
+    // backup から id プロパティを取り除き、残りを一括上書き
+    const { id: _, ...rest } = backup
+    Object.assign(dest, rest)
+    // console.log('after :', JSON.parse(JSON.stringify(dest)))
+
+    // 配列の参照を切り替えて更新を通知
+    counters.value = [...counters.value]
+  }
+
   //--- core actions -----------------------------------------
   function remove(id: string) {
     counters.value = counters.value.filter(c => c.id !== id)
@@ -321,6 +347,8 @@ export const useCounterStore = defineStore('counter', () => {
   //--- return API --------------------------------------------
   return {
     counters,
+    loadBackup,
+    loadCounterBackup,
     remove,
     add,
     updateName,

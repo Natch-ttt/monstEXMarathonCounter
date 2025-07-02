@@ -15,59 +15,35 @@
       <div class="content-wrapper">
         <ion-list v-if="counterStore.counters.length">
           <template v-for="item in counterStore.counters" :key="item.id">
-            <!-- ネイティブならスワイプ削除 -->
-            <ion-item-sliding v-if="isNative">
+            <!-- デスクトップだけ横並びボタン -->
+            <div v-if="isDesktop" class="item-wrapper">
+              <ion-item class="flex-item" button detail @click="goCounter(item.id)">
+                <CounterItemLabel :item="item" />
+              </ion-item>
+              <ion-button fill="clear" @click="editTitle(item)">
+                <ion-icon slot="icon-only" :icon="pencil" />
+              </ion-button>
+              <ion-button fill="clear" color="danger"
+                          @click.stop.prevent="confirmRemove(item.id, item.name)">
+                <ion-icon slot="icon-only" :icon="trashOutline" />
+              </ion-button>
+            </div>
+
+            <!-- デスクトップ以外はスライド -->
+            <ion-item-sliding v-else>
               <ion-item button detail @click="goCounter(item.id)">
-                <!-- ラベル表示をコンポーネント化 -->
                 <CounterItemLabel :item="item" />
               </ion-item>
               <ion-item-options side="end">
-                <!-- 編集ボタン -->
-                <ion-item-option
-                  color="light"
-                  @click="editTitle(item)"
-                >
+                <ion-item-option color="light" @click="editTitle(item)">
                   <ion-icon slot="icon-only" :icon="pencil" />
                 </ion-item-option>
-                <!-- 削除ボタン -->
-                <ion-item-option
-                  color="danger"
-                  @click="confirmRemove(item.id, item.name)"
-                >
+                <ion-item-option color="danger"
+                  @click="confirmRemove(item.id, item.name)">
                   <ion-icon slot="icon-only" :icon="trashOutline" />
                 </ion-item-option>
               </ion-item-options>
             </ion-item-sliding>
-
-            <!-- Webなら横並び -->
-            <div v-else class="item-wrapper">
-              <ion-item
-                class="flex-item"
-                button
-                detail
-                @click="goCounter(item.id)"
-              >
-                <!-- ラベル表示をコンポーネント化 -->
-                <CounterItemLabel :item="item" />
-              </ion-item>
-              <!-- 編集ボタン -->
-              <ion-button
-                class="edit-button"
-                fill="clear"
-                @click="editTitle(item)"
-              >
-                <ion-icon slot="icon-only" :icon="pencil" />
-              </ion-button>
-
-              <!-- 削除ボタン -->
-              <ion-button
-                class="delete-button"
-                fill="clear"
-                @click.stop.prevent="confirmRemove(item.id, item.name)"
-              >
-                <ion-icon slot="icon-only" :icon="trashOutline" />
-              </ion-button>
-            </div>
           </template>
         </ion-list>
 
@@ -103,9 +79,8 @@ const router = useRouter()
 const counterStore  = useCounterStore()
 const settingsStore = useSettingsStore()
 
-// ネイティブかハイブリッドか判定
-const isNative = isPlatform('capacitor') || isPlatform('cordova')
-// const isNative = true
+// desktopか判定
+const isDesktop = isPlatform('desktop')
 
 async function goCounter(id: string) {
   // settingsStore に currentId をセット

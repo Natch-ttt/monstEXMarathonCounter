@@ -8,6 +8,14 @@
         <ion-title>{{ item.name }}</ion-title>
         <!-- ヘッダーボタン群 -->
         <ion-buttons slot="end" class="header-end-button">
+          <!-- エクスポート -->
+          <ion-button @click="exportBackup">
+            <ion-icon :icon="saveOutline" slot="icon-only" />
+          </ion-button>
+          <!-- インポート -->
+          <ion-button @click="importBackup">
+            <ion-icon :icon="downloadOutline" slot="icon-only" />
+          </ion-button>
           <!-- オプションボタン -->
           <ion-button fill="clear" @click="toggleOptionMenu">
             <ion-icon slot="icon-only" :icon="settingsOutline" />
@@ -250,12 +258,13 @@ import {
 } from '@ionic/vue'
 import type { DatetimeCustomEvent } from '@ionic/vue'
 import {
-  sparkles, close, calendarOutline, calendarSharp, todaySharp, menuOutline, settingsOutline
+  sparkles, close, calendarOutline, calendarSharp, todaySharp,
+  menuOutline, settingsOutline, downloadOutline, saveOutline
 } from 'ionicons/icons'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
-import type { IconDefinition } from '@fortawesome/fontawesome-svg-core'
 import {
-  faPersonRunning, faPercent, faClockRotateLeft, faEraser, faGem, faClover
+  faPersonRunning, faPercent, faClockRotateLeft, faEraser,
+  faGem, faClover
 } from '@fortawesome/free-solid-svg-icons'
 import { useMenuStore } from '@/stores/menu'
 import { useCounterStore } from '@/stores/counter'
@@ -264,14 +273,14 @@ import { useSettingsStore } from '@/stores/settings'
 const route = useRoute()
 const router = useRouter()
 const id    = computed(() => route.params.id as string)
-const store = useCounterStore()
-const menu = useMenuStore()
+const counterStore = useCounterStore()
+const menuStore = useMenuStore()
 const settingsStore = useSettingsStore()
 
 const today = new Date()
 
 // CounterItem の取得
-const item = computed(() => store.getItem(id.value)!)
+const item = computed(() => counterStore.getItem(id.value)!)
 
 // 現在の設定オブジェクト
 const settings = computed(() => settingsStore.current)
@@ -290,10 +299,10 @@ onMounted(async () => {
   }
 });
 
-// 期間モード／選択キーは store 参照
-const period        = computed(() => store.period)
-const selectedMonth = computed(() => store.selectedMonth)
-const selectedDay   = computed(() => store.selectedDay)
+// 期間モード／選択キーは counterStore 参照
+const period        = computed(() => counterStore.period)
+const selectedMonth = computed(() => counterStore.selectedMonth)
+const selectedDay   = computed(() => counterStore.selectedDay)
 type Period = 'all' | 'month' | 'day'
 
 // カウンター名
@@ -318,7 +327,7 @@ const popoverClasses = computed<string[]>(() => {
 
 // 期間切替
 function onPeriodChange(v: Period) {
-  store.setPeriod(v)
+  counterStore.setPeriod(v)
 }
 
 // 月別/日別の時刻ラベルを整形
@@ -340,16 +349,16 @@ const currentPeriodIcon = computed(() => {
 
 // オプションサイドメニューのトグル
 async function toggleOptionMenu() {
-  await menu.openOptionMenu()
+  await menuStore.openOptionMenu()
 }
 
 // 遭遇サイドメニューのトグル
 async function toggleRecordMenu() {
-  await menu.openLogsMenu()
+  await menuStore.openLogsMenu()
 }
 
 // 指標用にストア periodMetrics を呼び出す
-const pm = computed(() => store.periodMetrics(
+const pm = computed(() => counterStore.periodMetrics(
   id.value,
   period.value,
   period.value === 'month'
@@ -358,7 +367,7 @@ const pm = computed(() => store.periodMetrics(
       ? selectedDay.value
       : undefined
 ))
-const tabooPm = computed(() => store.periodTabooMetrics(
+const tabooPm = computed(() => counterStore.periodTabooMetrics(
   id.value,
   period.value,
   period.value === 'month'
@@ -402,11 +411,11 @@ function openPopover(e: UIEvent) {
   // popover を開く直前に old／初期値をセット
   MAX_MONTH = maxMonth.split('-')[1]
 
-  baseOldMonth      = store.selectedMonth
-  pickerMonth.value = store.selectedMonth
+  baseOldMonth      = counterStore.selectedMonth
+  pickerMonth.value = counterStore.selectedMonth
 
-  baseOldDay        = store.selectedDay
-  pickerDay.value   = store.selectedDay
+  baseOldDay        = counterStore.selectedDay
+  pickerDay.value   = counterStore.selectedDay
 
   showPicker.value   = true
 }
@@ -426,7 +435,7 @@ function onMonthPicked(e: DatetimeCustomEvent) {
   const [newY, newM] = v.split('-')
 
   // 3) store にコミット && 初期値の再セット
-  store.setSelectedMonth(v)
+  counterStore.setSelectedMonth(v)
 
   // 4) 月が変わっていれば popover を閉じる
   if (oldY === newY && oldM !== newM) {
@@ -449,9 +458,9 @@ function onDayPicked(e: DatetimeCustomEvent) {
   const [oldY, oldM, oldD] = baseOldDay.split('-')
   const [newY, newM, newD] = v.split('-')
 
-  // 3) store にコミット && 初期値の再セット
-  store.setSelectedDay(v)
-  baseOldDay = store.selectedDay
+  // 3) counterStore にコミット && 初期値の再セット
+  counterStore.setSelectedDay(v)
+  baseOldDay = counterStore.selectedDay
 
   // 4) 日にちだけが変わっていれば popover を閉じる
   if (oldY === newY && oldM === newM && oldD !== newD) {
@@ -465,7 +474,7 @@ function onPopoverDismiss() {
 
 // ページ表示・復帰時は累計モードにリセット
 onIonViewWillEnter(() => {
-  store.setPeriod('all')
+  counterStore.setPeriod('all')
 
   if (!item.value) {
     // まだレンダリング前の段階なら即時置き換え
@@ -639,8 +648,8 @@ const dispTabooMetrics = computed<Metric[]>(() => {
 })
 
 // ボタンハンドラ
-function increment() { store.incrementRun(id.value) }
-function decrement() { store.decrementRun(id.value) }
+function increment() { counterStore.incrementRun(id.value) }
+function decrement() { counterStore.decrementRun(id.value) }
 
 // リセットボタン押下時
 async function promptReset() {
@@ -654,7 +663,7 @@ async function promptReset() {
         text: 'リセット',
         role: 'destructive',
         handler: () => {
-          store.resetAll(id.value) // ストアの全リセット関数を呼ぶ
+          counterStore.resetAll(id.value) // ストアの全リセット関数を呼ぶ
         }
       }
     ]
@@ -696,14 +705,14 @@ async function promptEncounter() {
   const cnt  = parseInt(raw, 10) || 0
 
   // 遭遇ログ登録
-  store.onEncounter(id.value, cnt)
+  counterStore.onEncounter(id.value, cnt)
 
   // ② 禁忌EXモードならチェックボックスのアラートを出す
   if (!settings.value.tabooEX || cnt < 2) return
 
   if (settings.value.tabooEX && cnt === 2) {
     console.log(cnt)
-    store.onTreasure(id.value, 1)
+    counterStore.onTreasure(id.value, 1)
     return
   }
 
@@ -733,10 +742,10 @@ async function promptEncounter() {
           // handler には選択された value の配列が渡される
           if (Array.isArray(selected)) {
             if (selected.includes('treasure')) {
-              store.onTreasure(id.value, 1)
+              counterStore.onTreasure(id.value, 1)
             }
             if (selected.includes('luckyRiza')) {
-              store.onLuckyRiza(id.value, 1)
+              counterStore.onLuckyRiza(id.value, 1)
             }
           }
         }
@@ -744,6 +753,111 @@ async function promptEncounter() {
     ]
   })
   await chkAlert.present()
+}
+
+// ------- バックアップを出力/入力 -----------
+
+// --- 1) エクスポート処理 ---
+function exportBackup() {
+  // 1) カウンターデータ名を取得
+  const item = counterStore.getItem(id.value)
+  if (!item) {
+    console.warn(`Counter with id=${id.value} not found.`)
+    return
+  }
+
+  // 2) JSON 化（必要なら wrapper をつけても OK）
+  const data = JSON.stringify(item, null, 2)
+
+  // 3) ファイル名生成
+  //    ファイル名に使えない文字を除去
+  //    Windows/mac で NG な <>:"/\|?* のほか制御文字も排除
+  const rawName  = item?.name ?? 'backup'
+  const safeName = rawName.replace(/[<>:"\/\\|?*\x00-\x1F]/g, '').trim() 
+                         || 'backup'
+
+  // 4) 日時文字列を作成 (YYYYMMDD-HHmmss)
+  const now = new Date()
+  const YYYY = now.getFullYear().toString().padStart(4, '0')
+  const MM   = (now.getMonth()+1).toString().padStart(2, '0')
+  const DD   = now.getDate().toString().padStart(2, '0')
+  const hh   = now.getHours().toString().padStart(2, '0')
+  const mm   = now.getMinutes().toString().padStart(2, '0')
+  const ss   = now.getSeconds().toString().padStart(2, '0')
+  const timestamp = `${YYYY}${MM}${DD}-${hh}${mm}${ss}`
+
+  // 5) 拡張子付きファイル名
+  const filename = `${safeName}-${timestamp}.mnstEXcounter.json`
+
+  // 6) データを JSON 化してダウンロード
+  const blob = new Blob([data], { type: 'application/json' })
+  const url  = URL.createObjectURL(blob)
+  const a    = document.createElement('a')
+  a.href     = url
+  a.download = filename
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
+// --- 2) インポート処理の起点 ---
+function importBackup() {
+  const input = document.createElement('input')
+  input.type    = 'file'
+  input.accept = '.mnstEXcounter.json'
+  input.onchange = async () => {
+    if (!input.files?.length) return
+    const file = input.files[0]
+
+    // 念のため拡張子チェックも入れておく
+    if (!file.name.endsWith('.mnstEXcounter.json')) {
+      await alertController.create({
+        header: 'ファイル形式エラー',
+        message: '拡張子が .mnstEXcounter.json のファイルを選択してください。',
+        buttons: ['OK']
+      }).then(a => a.present())
+      return
+    }
+
+    try {
+      const text = await file.text()
+      const json = JSON.parse(text)
+      await confirmAndLoad(json)
+    } catch {
+      await alertController.create({
+        header: '読み込みエラー',
+        message: '正しいバックアップファイルを選択してください',
+        buttons: ['OK']
+      }).then(a => a.present())
+    }
+  }
+  input.click()
+}
+
+// --- 3) 上書き確認アラート＋ロード ---
+async function confirmAndLoad(backup: any) {
+  // 既存データがゼロ件でなければ確認
+  const hasData = counterStore.$state.counters.length > 0
+  if (hasData) {
+    const alert = await alertController.create({
+      header: 'データを上書きしますか？',
+      message: '既存のカウンターデータは全て置き換えられます。',
+      buttons: [
+        { text: 'キャンセル', role: 'cancel' },
+        {
+          text: '上書き',
+          handler: () => applyBackup(backup)
+        }
+      ]
+    })
+    await alert.present()
+  } else {
+    applyBackup(backup)
+  }
+}
+
+// --- 4) 実際に Store にロード ---
+function applyBackup(backup: any) {
+  counterStore.loadCounterBackup(id.value, backup)
 }
 
 </script>
